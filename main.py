@@ -4,6 +4,7 @@ import json
 import random
 from colorama import Fore, Style, init
 from ascii_styles import ascii_styles
+import requests  # ✅ ajouté pour la vérification de version
 
 init(autoreset=True)
 
@@ -18,6 +19,35 @@ if os.name == 'nt':
         os.system(f'mode con: cols={cols} lines={lines}')
     except:
         pass
+
+LOCAL_VERSION = "2.1"
+VERSION_URL = "https://raw.githubusercontent.com/a5x/tk667/refs/heads/main/version.txt"
+
+def check_for_update():
+    """
+    Compare LOCAL_VERSION avec la version distante (version.txt sur GitHub).
+    Si différente => affiche un message d'alerte en rouge.
+    """
+    try:
+        r = requests.get(VERSION_URL, timeout=5)
+        if r.status_code == 200:
+            latest = r.text.strip()
+            if latest != LOCAL_VERSION:
+                # Encadré rouge d’alerte
+                msg1 = f" Nouvelle version disponible : {latest} "
+                msg2 = f" Version actuelle : {LOCAL_VERSION} "
+                bar_len = max(len(msg1), len(msg2)) + 4
+                print(Fore.RED + "█" * bar_len)
+                print("█ " + msg1.ljust(bar_len - 3) + "█")
+                print("█ " + msg2.ljust(bar_len - 3) + "█")
+                print("█ " + "Mets à jour depuis ton GitHub.".ljust(bar_len - 3) + "█")
+                print("█" * bar_len + Style.RESET_ALL + "\n")
+            else:
+                print(Fore.GREEN + f"✅ Version à jour ({LOCAL_VERSION}).\n" + Style.RESET_ALL)
+        else:
+            print(Fore.YELLOW + "⚠️ Impossible de vérifier la version en ligne.\n" + Style.RESET_ALL)
+    except Exception as e:
+        print(Fore.YELLOW + f"⚠️ Vérification de mise à jour échouée : {e}\n" + Style.RESET_ALL)
 
 translations = {
     "fr": {
@@ -99,7 +129,6 @@ translations = {
     }
 }
 
-
 def load_language():
     if os.path.exists("Settings/lang_config.json"):
         with open("Settings/lang_config.json", "r", encoding="utf-8") as f:
@@ -146,7 +175,7 @@ def scraps_tools_menu():
     print(margin + Fore.GREEN + "[2]" + Fore.RED + f" {t['option_2']}")
     print(margin + Fore.GREEN + "[3]" + Fore.RED + f" {t['option_3']}")
     print(margin + Fore.GREEN + "[4]" + Fore.RED + f" {t['option_4']}")
-    print(margin + Fore.GREEN + "[5]" + Fore.RED + " Start script : (Collect Profiles + emails + acc's info's)")
+    print(margin + Fore.GREEN + "[5]" + Fore.Red + " Start script : (Collect Profiles + emails + acc's info's)")
     print(margin + Fore.GREEN + "[v]" + Fore.RED + f" {t['option_v']}")
     print(margin + Fore.YELLOW + "[b]" + Fore.RED + f" {t['return_menu']}")
     print()
@@ -351,6 +380,9 @@ def launch_foryou_panel():
         input(f"{t['return_menu']}...".center(140))
 
 def main():
+    # ✅ Vérifie la mise à jour au démarrage
+    check_for_update()
+
     while True:
         lang = load_language()
         t = translations[lang]
