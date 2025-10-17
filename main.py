@@ -37,7 +37,7 @@ GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
 
 # URL du fichier version.txt (raw)
-VERSION_URL = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/{GITHUB_BRANCH}/version.txt"
+VERSION_URL = f"https://raw.githubusercontent.com/a5x/tk667/main/version.txt"
 
 # Chemins à préserver lors de la mise à jour (ex: configs, fichiers générés)
 PRESERVE_PATHS = [
@@ -46,10 +46,11 @@ PRESERVE_PATHS = [
     "Scripts_info_extract/",   # tout le dossier
 ]
 
+# --- Helpers version / préservation ---
 def _parse_version(v: str):
     try:
         return tuple(int(x) for x in v.strip().split("."))
-    except:
+    except Exception:
         return tuple(v.strip().split("."))
 
 def _is_preserved(rel_path: str) -> bool:
@@ -64,30 +65,31 @@ def _is_preserved(rel_path: str) -> bool:
                 return True
     return False
 
+
 def _force_update_from_github():
-    """
-    Télécharge le ZIP du repo GitHub (branche) et remplace les fichiers locaux,
-    en préservant ceux listés dans PRESERVE_PATHS. Redémarre ensuite le programme.
-    """
     zip_url = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/archive/refs/heads/{GITHUB_BRANCH}.zip"
-    print(Fore.CYAN + "⬇️ Téléchargement de la mise à jour..." + Style.RESET_ALL)
+    print(Fore.CYAN + f"⬇️ Téléchargement ZIP: {zip_url}" + Style.RESET_ALL)
     r = requests.get(zip_url, timeout=30)
+    print(Fore.CYAN + f"HTTP {r.status_code}" + Style.RESET_ALL)
     r.raise_for_status()
 
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-        # Racine du zip: <repo>-<branch>/
-        top = z.namelist()[0].split("/")[0]
+        top = z.namelist()[0].split("/")[0]  # ex: tk667-main
+        print(Fore.CYAN + f"Racine ZIP: {top}" + Style.RESET_ALL)
+
+        replaced, skipped = 0, 0
         for member in z.infolist():
             if member.is_dir():
                 continue
             path_in_zip = member.filename
             if not path_in_zip.startswith(top + "/"):
                 continue
-            rel_path = path_in_zip[len(top) + 1:]  # chemin relatif projet
 
+            rel_path = path_in_zip[len(top) + 1:]  # chemin relatif projet
             if not rel_path or rel_path.endswith("/"):
                 continue
             if _is_preserved(rel_path):
+                skipped += 1
                 # print(f"[skip] {rel_path}")
                 continue
 
@@ -95,37 +97,46 @@ def _force_update_from_github():
             os.makedirs(os.path.dirname(target_path), exist_ok=True)
             with z.open(member, "r") as src, open(target_path, "wb") as dst:
                 shutil.copyfileobj(src, dst)
+            replaced += 1
 
+    print(Fore.GREEN + f"✅ Fichiers remplacés: {replaced} | Préservés: {skipped}" + Style.RESET_ALL)
     print(Fore.GREEN + "✅ Mise à jour installée. Redémarrage..." + Style.RESET_ALL)
     time.sleep(0.5)
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 def check_and_force_update():
-    """
-    Compare la version distante (version.txt) avec la locale.
-    Si distante > locale → installation automatique immédiate (force update).
-    """
     try:
+        print(Fore.CYAN + f"🔎 Vérification version: {VERSION_URL}" + Style.RESET_ALL)
         resp = requests.get(VERSION_URL, timeout=8)
+        print(Fore.CYAN + f"HTTP {resp.status_code}" + Style.RESET_ALL)
+
         if resp.status_code != 200:
             print(Fore.YELLOW + "⚠️ Impossible de vérifier la version en ligne.\n" + Style.RESET_ALL)
             return
+
         latest = resp.text.strip()
+        print(Fore.CYAN + f"Distante: {latest} | Locale: {LOCAL_VERSION}" + Style.RESET_ALL)
 
         if _parse_version(latest) > _parse_version(LOCAL_VERSION):
             msg1 = f" Nouvelle version détectée : {latest} "
             msg2 = f" Version actuelle : {LOCAL_VERSION} "
-            msg3 = " Installation automatique en cours..."
+            msg3 = " Appuie sur Entrée pour télécharger et installer la mise à jour "
             bar_len = max(len(msg1), len(msg2), len(msg3)) + 4
+
             print(Fore.RED + "█" * bar_len)
             print("█ " + msg1.ljust(bar_len - 3) + "█")
             print("█ " + msg2.ljust(bar_len - 3) + "█")
             print("█ " + msg3.ljust(bar_len - 3) + "█")
             print("█" * bar_len + Style.RESET_ALL + "\n")
 
-            _force_update_from_github()
+            choice = input(Fore.YELLOW + "➡️  Entrée = Installer maintenant | Taper N pour ignorer : " + Style.RESET_ALL).strip().lower()
+            if choice in ("", "o", "y"):  # Entrée = oui
+                _force_update_from_github()
+            else:
+                print(Fore.CYAN + "⏭️  Mise à jour ignorée, démarrage du tool...\n" + Style.RESET_ALL)
         else:
             print(Fore.GREEN + f"✅ Version à jour ({LOCAL_VERSION}).\n" + Style.RESET_ALL)
+
     except Exception as e:
         print(Fore.YELLOW + f"⚠️ Vérification de mise à jour échouée : {e}\n" + Style.RESET_ALL)
 
