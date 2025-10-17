@@ -7,6 +7,7 @@ import io
 import zipfile
 import shutil
 import requests
+import subprocess
 from colorama import Fore, Style, init
 from ascii_styles import ascii_styles
 
@@ -24,19 +25,48 @@ if os.name == 'nt':
     except:
         pass
 
+# =========================
+# ====== VERSIONS =========
+# =========================
 LOCAL_VERSION = "2.2"
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
 
-VERSION_URL = f"https://raw.githubusercontent.com/a5x/tk667/main/version.txt"
+# version.txt (pour comparer)
+VERSION_URL = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/main/version.txt"
 
+# Binaire release (pour mise à jour .exe)
+# ➜ Remplace par le bon nom si besoin.
+RELEASE_EXE_URL = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest/download/TK667.exe"
+
+# Fichiers/dossiers à préserver pour l'update ZIP (mode dev)
 PRESERVE_PATHS = [
     "Settings/lang_config.json",
     "Settings/config.json",
-    "Scripts_info_extract/",
+    "Scripts_info_extract/",   # tout le dossier
 ]
 
+# =========================
+# ====== PATH HELPERS =====
+# =========================
+def get_app_dir():
+    """Dossier où se trouve le binaire (.exe) ou le main.py en dev."""
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+APP_DIR = get_app_dir()
+OUTPUT_DIR = os.path.join(APP_DIR, "Scripts_info_extract")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+def out_path(*parts):
+    """Construit un chemin de sortie dans Scripts_info_extract/ à côté du .exe."""
+    return os.path.join(OUTPUT_DIR, *parts)
+
+# =========================
+# ====== UPDATE HELPERS ===
+# =========================
 def _parse_version(v: str):
     try:
         return tuple(int(x) for x in v.strip().split("."))
@@ -55,17 +85,73 @@ def _is_preserved(rel_path: str) -> bool:
                 return True
     return False
 
+def _download_file(url, dest_path, timeout=60):
+    print(Fore.CYAN + f"⬇️ Téléchargement : {url}" + Style.RESET_ALL)
+    with requests.get(url, stream=True, timeout=timeout) as r:
+        r.raise_for_status()
+        with open(dest_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+    return dest_path
+
+def _write_and_run_replacer(old_exe, new_exe):
+    """
+    Crée un .bat qui :
+    - attend que l'ancien .exe se ferme
+    - remplace l'exe
+    - relance l'app
+    - s'auto-supprime
+    """
+    bat_path = os.path.join(APP_DIR, "update_swap.bat")
+    bat_content = fr"""
+@echo off
+SETLOCAL
+:waitloop
+timeout /t 1 /nobreak >nul
+tasklist | find /i "{os.path.basename(old_exe)}" >nul
+if %ERRORLEVEL%==0 goto waitloop
+move /Y "{new_exe}" "{old_exe}"
+start "" "{old_exe}"
+del "%~f0"
+"""
+    with open(bat_path, "w", encoding="utf-8") as bf:
+        bf.write(bat_content.strip())
+    os.startfile(bat_path)
+    sys.exit(0)
+
+def _force_update_exe_from_release(release_url):
+    """
+    Télécharge le nouveau .exe et lance le batch de remplacement.
+    """
+    if not getattr(sys, "frozen", False):
+        print(Fore.YELLOW + "Mode dev détecté (non gelé) : mise à jour .exe ignorée." + Style.RESET_ALL)
+        return
+
+    current_exe = sys.executable
+    new_exe = os.path.join(APP_DIR, f"{os.path.splitext(os.path.basename(current_exe))[0]}_new.exe")
+
+    try:
+        _download_file(release_url, new_exe)
+        print(Fore.GREEN + "✅ Nouveau binaire téléchargé." + Style.RESET_ALL)
+        print(Fore.CYAN + "⏳ Remplacement en cours..." + Style.RESET_ALL)
+        _write_and_run_replacer(current_exe, new_exe)
+    except Exception as e:
+        print(Fore.RED + f"❌ Échec de la mise à jour .exe : {e}" + Style.RESET_ALL)
 
 def _force_update_from_github():
+    """
+    Mode dev (.py) : télécharge le ZIP du repo et remplace les fichiers (en préservant certains).
+    """
     zip_url = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/archive/refs/heads/{GITHUB_BRANCH}.zip"
-    print(Fore.CYAN + f"Téléchargement du ZIP depuis le github: {zip_url}" + Style.RESET_ALL)
+    print(Fore.CYAN + f"⬇️ Téléchargement du ZIP depuis GitHub : {zip_url}" + Style.RESET_ALL)
     r = requests.get(zip_url, timeout=30)
     print(Fore.CYAN + f"HTTP {r.status_code}" + Style.RESET_ALL)
     r.raise_for_status()
 
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-        top = z.namelist()[0].split("/")[0]
-        print(Fore.CYAN + f"Racine ZIP !: {top}" + Style.RESET_ALL)
+        top = z.namelist()[0].split("/")[0]  # ex: tk667-main
+        print(Fore.CYAN + f"Racine ZIP : {top}" + Style.RESET_ALL)
 
         replaced, skipped = 0, 0
         for member in z.infolist():
@@ -88,44 +174,135 @@ def _force_update_from_github():
                 shutil.copyfileobj(src, dst)
             replaced += 1
 
-    print(Fore.GREEN + f"Fichiers remplacés : {replaced} ✅ | non modifiés: {skipped} ✅" + Style.RESET_ALL)
-    print(Fore.GREEN + "Mise à jour installée ✅. Redémarrage..." + Style.RESET_ALL)
+    print(Fore.GREEN + f"✅ Fichiers remplacés : {replaced} | Préservés : {skipped}" + Style.RESET_ALL)
+    print(Fore.GREEN + "✅ Mise à jour installée. Redémarrage..." + Style.RESET_ALL)
     time.sleep(0.5)
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 def check_and_force_update():
+    """
+    Compare VERSION_URL vs LOCAL_VERSION.
+    - Si gelé (.exe) : met à jour via release (.exe).
+    - Sinon : met à jour via ZIP (sources).
+    """
     try:
-        print(Fore.CYAN + f"Vérification de la version: {VERSION_URL}" + Style.RESET_ALL)
+        print(Fore.CYAN + f"🔎 Vérification version: {VERSION_URL}" + Style.RESET_ALL)
         resp = requests.get(VERSION_URL, timeout=8)
         print(Fore.CYAN + f"HTTP {resp.status_code}" + Style.RESET_ALL)
 
         if resp.status_code != 200:
-            print(Fore.YELLOW + "Impossible de vérifier la version sur le github.\n" + Style.RESET_ALL)
+            print(Fore.YELLOW + "⚠️ Impossible de vérifier la version en ligne.\n" + Style.RESET_ALL)
             return
 
         latest = resp.text.strip()
         print(Fore.CYAN + f"Distante: {latest} | Locale: {LOCAL_VERSION}" + Style.RESET_ALL)
 
         if _parse_version(latest) > _parse_version(LOCAL_VERSION):
+            # Bandeau
+            is_frozen = getattr(sys, "frozen", False)
+            target = "le binaire (.exe)" if is_frozen else "les fichiers du projet"
             msg1 = f" Nouvelle version détectée : {latest} "
             msg2 = f" Version actuelle : {LOCAL_VERSION} "
-            msg3 = " Appuie sur Entrée pour télécharger et installer la mise à jour "
+            msg3 = f" Appuie sur Entrée pour mettre à jour {target} "
             bar_len = max(len(msg1), len(msg2), len(msg3)) + 4
 
             print(Fore.RED + "█" * bar_len)
-            print(Fore.RED +"█ " + msg1.ljust(bar_len - 3) + "█")
-            print(Fore.RED +"█ " + msg2.ljust(bar_len - 3) + "█")
-            print(Fore.RED +"█ " + msg3.ljust(bar_len - 3) + "█")
-            print(Fore.RED +"█" * bar_len + Style.RESET_ALL + "\n")
+            print(Fore.RED + "█ " + msg1.ljust(bar_len - 3) + "█")
+            print(Fore.RED + "█ " + msg2.ljust(bar_len - 3) + "█")
+            print(Fore.RED + "█ " + msg3.ljust(bar_len - 3) + "█")
+            print(Fore.RED + "█" * bar_len + Style.RESET_ALL + "\n")
 
-            input(Fore.YELLOW + "Appuie sur Entrée pour installer..." + Style.RESET_ALL)
-            _force_update_from_github()
+            input(Fore.YELLOW + "➡️  Appuie sur Entrée pour installer maintenant..." + Style.RESET_ALL)
+
+            if is_frozen:
+                _force_update_exe_from_release(RELEASE_EXE_URL)
+            else:
+                _force_update_from_github()
         else:
-            print(Fore.GREEN + f"Version à jour ({LOCAL_VERSION}).\n" + Style.RESET_ALL)
+            print(Fore.GREEN + f"✅ Version à jour ({LOCAL_VERSION}).\n" + Style.RESET_ALL)
 
     except Exception as e:
-        print(Fore.YELLOW + f"Vérification de la mise à jour échouée : {e}\n" + Style.RESET_ALL)
+        print(Fore.YELLOW + f"⚠️ Vérification de mise à jour échouée : {e}\n" + Style.RESET_ALL)
 
+# =========================
+# ====== BUILD .EXE =======
+# =========================
+def ensure_pyinstaller():
+    try:
+        import PyInstaller  # noqa: F401
+        return True
+    except Exception:
+        print(Fore.YELLOW + "PyInstaller non détecté. Installation..." + Style.RESET_ALL)
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pyinstaller"])
+            import PyInstaller  # noqa
+            return True
+        except Exception as e:
+            print(Fore.RED + f"Échec d'installation de PyInstaller : {e}" + Style.RESET_ALL)
+            return False
+
+def build_exe():
+    """
+    Construit un .exe onefile à partir de ce main.py, en incluant ressources.
+    Le .exe final est dans ./dist/TK667.exe
+    """
+    if os.name != "nt":
+        print(Fore.RED + "Build .exe : Windows requis." + Style.RESET_ALL)
+        return
+
+    if getattr(sys, "frozen", False):
+        print(Fore.YELLOW + "Tu es déjà dans une version packagée. Lance le build depuis la version .py." + Style.RESET_ALL)
+        return
+
+    if not ensure_pyinstaller():
+        return
+
+    # Prépare les options PyInstaller
+    name = "TK667"
+    main_script = os.path.abspath(__file__)
+
+    # --add-data: "source;dest" sous Windows
+    add_data = []
+    for folder in ["Settings", "Scripts", "second_script"]:
+        if os.path.exists(os.path.join(APP_DIR, folder)):
+            add_data.append(f"{folder};{folder}")
+
+    cmd = [
+        sys.executable, "-m", "PyInstaller",
+        main_script,
+        "-n", name,
+        "--onefile",
+        # Retire --noconsole si tu veux voir la console
+        # "--noconsole",
+    ]
+
+    for data in add_data:
+        cmd.extend(["--add-data", data])
+
+    # Icône optionnelle
+    icon_path = os.path.join(APP_DIR, "app.ico")
+    if os.path.exists(icon_path):
+        cmd.extend(["--icon", icon_path])
+
+    print(Fore.CYAN + "🔨 Construction du .exe avec PyInstaller..." + Style.RESET_ALL)
+    print(Fore.CYAN + " ".join(cmd) + Style.RESET_ALL)
+
+    try:
+        subprocess.check_call(cmd, cwd=APP_DIR)
+        exe_path = os.path.join(APP_DIR, "dist", f"{name}.exe")
+        if os.path.exists(exe_path):
+            print(Fore.GREEN + f"✅ Build terminé : {exe_path}" + Style.RESET_ALL)
+            print(Fore.GREEN + "Conseil : Publie ce binaire dans tes Releases GitHub pour activer l'auto-update .exe." + Style.RESET_ALL)
+        else:
+            print(Fore.YELLOW + "Le build a fini sans erreur mais l'exe attendu n'a pas été trouvé." + Style.RESET_ALL)
+    except subprocess.CalledProcessError as e:
+        print(Fore.RED + f"❌ Build PyInstaller échoué (code {e.returncode})." + Style.RESET_ALL)
+    except Exception as e:
+        print(Fore.RED + f"❌ Erreur durant le build : {e}" + Style.RESET_ALL)
+
+# =========================
+# ====== TON TOOL UI ======
+# =========================
 translations = {
     "fr": {
         "menu_title": "========= New Release 2.1 =========",
@@ -151,7 +328,8 @@ translations = {
         "choose_submenu_option": "Choisissez une option (ou [b] pour revenir) : ",
         "submenu_1_title": "=============== Choissisez une option ===============",
         "submenu_2_title": "=============== Choissisez une option ===============",
-        "submenu_3_title": "=========== Paramètres ==========="
+        "submenu_3_title": "=========== Paramètres ===========",
+        "build_exe": "Build Windows (.exe)"
     },
     "en": {
         "menu_title": "========= New Release 2.1 =========",
@@ -177,7 +355,8 @@ translations = {
         "choose_submenu_option": "Choose an option (or [b] to go back): ",
         "submenu_1_title": "=========== Choose an option ===========",
         "submenu_2_title": "=========== Choose an option ===========",
-        "submenu_3_title": "=========== Settings ==========="
+        "submenu_3_title": "=========== Settings ===========",
+        "build_exe": "Build Windows (.exe)"
     },
     "ru": {
         "menu_title": "========= New Release 2.1 =========",
@@ -202,18 +381,25 @@ translations = {
         "choose_submenu_option": "Выберите опцию (или [b] для возврата): ",
         "submenu_1_title": "=========== Инструменты сбора данных ===========",
         "submenu_2_title": "=========== Вторые скрипты ===========",
-        "submenu_3_title": "=========== Настройки ==========="
+        "submenu_3_title": "=========== Настройки ===========",
+        "build_exe": "Сборка Windows (.exe)"
     }
 }
 
 def load_language():
-    if os.path.exists("Settings/lang_config.json"):
-        with open("Settings/lang_config.json", "r", encoding="utf-8") as f:
-            return json.load(f).get("lang", "fr")
+    cfg = os.path.join(APP_DIR, "Settings", "lang_config.json")
+    if os.path.exists(cfg):
+        with open(cfg, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f).get("lang", "fr")
+            except:
+                return "fr"
     return "fr"
 
 def save_language(lang):
-    with open("Settings/lang_config.json", "w", encoding="utf-8") as f:
+    cfg_dir = os.path.join(APP_DIR, "Settings")
+    os.makedirs(cfg_dir, exist_ok=True)
+    with open(os.path.join(cfg_dir, "lang_config.json"), "w", encoding="utf-8") as f:
         json.dump({"lang": lang}, f)
 
 def clear_console():
@@ -282,6 +468,7 @@ def settings_menu():
     print(margin + Fore.YELLOW + "[S]" + Fore.RED + f" {t['option_s']}")
     print(margin + Fore.YELLOW + "[C]" + Fore.RED + f" {t['option_c']}")
     print(margin + Fore.BLUE + "[L]" + Fore.RED + f" {t['option_l']}")
+    print(margin + Fore.GREEN + "[X]" + Fore.RED + f" {t['build_exe']}")  # <— Build exe
     print(margin + Fore.RED + "[Q]" + Fore.RED + f" {t['option_q']}")
     print(margin + Fore.GREEN + "[T]" + Fore.RED + f" {t['option_t']}")
     print(margin + Fore.YELLOW + "[b]" + Fore.RED + f" {t['return_menu']}")
@@ -289,6 +476,7 @@ def settings_menu():
 
 def run_script(script_name):
     print(Fore.YELLOW + f"Lancement de {script_name}...\n" + Style.RESET_ALL)
+    # Remarque: si tes sous-scripts doivent écrire dans OUTPUT_DIR, fais-les utiliser out_path() aussi.
     exit_code = os.system(f"{sys.executable} {script_name}")
     if exit_code != 0:
         print(Fore.RED + f"Erreur lors de l'exécution de {script_name} (code {exit_code})" + Style.RESET_ALL)
@@ -317,10 +505,11 @@ def choose_language():
     input("\nAppuyez sur Entrée pour revenir au menu...")
 
 def settings():
-    CONFIG_FILE = "Settings/config.json"
+    CONFIG_FILE = os.path.join(APP_DIR, "Settings", "config.json")
+    os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
     config = {}
     if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r") as f:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             try:
                 config = json.load(f)
             except:
@@ -331,8 +520,8 @@ def settings():
         new_scrolls = int(input("Entrez le nouveau nombre de scrolls (entier > 0) : "))
         if new_scrolls > 0:
             config["scrolls"] = new_scrolls
-            with open(CONFIG_FILE, "w") as f:
-                json.dump(config, f, indent=4)
+            with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=4, ensure_ascii=False)
             print("Paramètre sauvegardé.")
         else:
             print("Nombre invalide, aucune modification effectuée.")
@@ -457,6 +646,7 @@ def launch_foryou_panel():
         input(f"{t['return_menu']}...".center(140))
 
 def main():
+    # 🔐 Update
     check_and_force_update()
 
     while True:
@@ -514,6 +704,8 @@ def main():
                     choose_language()
                 elif c == 'l':
                     changelog()
+                elif c == 'x':
+                    build_exe()  # <— Build Windows .exe
                 elif c == 'q':
                     print(Fore.MAGENTA + t["bye"] + Style.RESET_ALL)
                     sys.exit(0)
