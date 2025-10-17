@@ -103,40 +103,31 @@ def _force_update_from_github():
 def check_and_force_update():
     """
     Compare la version distante (version.txt) avec la locale.
-    Si distante > locale → demande une validation (Entrée) avant d'installer.
+    Si distante > locale → installation automatique immédiate (force update).
     """
     try:
         resp = requests.get(VERSION_URL, timeout=8)
         if resp.status_code != 200:
             print(Fore.YELLOW + "⚠️ Impossible de vérifier la version en ligne.\n" + Style.RESET_ALL)
             return
-
         latest = resp.text.strip()
 
         if _parse_version(latest) > _parse_version(LOCAL_VERSION):
             msg1 = f" Nouvelle version détectée : {latest} "
             msg2 = f" Version actuelle : {LOCAL_VERSION} "
-            msg3 = " Appuie sur Entrée pour télécharger et installer la mise à jour "
+            msg3 = " Installation automatique en cours..."
             bar_len = max(len(msg1), len(msg2), len(msg3)) + 4
-
             print(Fore.RED + "█" * bar_len)
             print("█ " + msg1.ljust(bar_len - 3) + "█")
             print("█ " + msg2.ljust(bar_len - 3) + "█")
             print("█ " + msg3.ljust(bar_len - 3) + "█")
             print("█" * bar_len + Style.RESET_ALL + "\n")
 
-            # ✅ L’utilisateur doit valider pour lancer l’installation
-            choice = input(Fore.YELLOW + "➡️  Appuie sur Entrée pour installer maintenant (ou tape N pour annuler) : " + Style.RESET_ALL).strip().lower()
-            if choice in ("", "o", "y"):  # Entrée (vide) ou oui
-                _force_update_from_github()
-            else:
-                print(Fore.CYAN + "⏭️  Mise à jour ignorée, démarrage du tool...\n" + Style.RESET_ALL)
+            _force_update_from_github()
         else:
             print(Fore.GREEN + f"✅ Version à jour ({LOCAL_VERSION}).\n" + Style.RESET_ALL)
-
     except Exception as e:
         print(Fore.YELLOW + f"⚠️ Vérification de mise à jour échouée : {e}\n" + Style.RESET_ALL)
-
 
 # =========================
 # ====== TON TOOL UI ======
