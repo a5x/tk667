@@ -2,9 +2,13 @@ import os
 import sys
 import json
 import random
+import time
+import io
+import zipfile
+import shutil
+import requests  # pour la vérification & le téléchargement
 from colorama import Fore, Style, init
 from ascii_styles import ascii_styles
-import requests  # ✅ ajouté pour la vérification de version
 
 init(autoreset=True)
 
@@ -20,34 +24,123 @@ if os.name == 'nt':
     except:
         pass
 
-LOCAL_VERSION = "2.1"
-VERSION_URL = "https://raw.githubusercontent.com/a5x/tk667/refs/heads/main/version.txt"
+# =========================
+# ====== MISE À JOUR ======
+# =========================
 
-def check_for_update():
+# Version locale affichée dans l'UI (peut rester "ancienne", c'est version.txt côté GitHub qui déclenche)
+LOCAL_VERSION = "2.1"
+
+# Ton dépôt GitHub
+GITHUB_OWNER  = "a5x"
+GITHUB_REPO   = "tk667"
+GITHUB_BRANCH = "main"
+
+# URL du fichier version.txt (raw)
+VERSION_URL = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/{GITHUB_BRANCH}/version.txt"
+
+# Chemins à préserver lors de la mise à jour (ex: configs, fichiers générés)
+PRESERVE_PATHS = [
+    "Settings/lang_config.json",
+    "Settings/config.json",
+    "Scripts_info_extract/",   # tout le dossier
+]
+
+def _parse_version(v: str):
+    try:
+        return tuple(int(x) for x in v.strip().split("."))
+    except:
+        return tuple(v.strip().split("."))
+
+def _is_preserved(rel_path: str) -> bool:
+    rel_path = rel_path.replace("\\", "/")
+    for p in PRESERVE_PATHS:
+        p = p.replace("\\", "/")
+        if p.endswith("/"):
+            if rel_path.startswith(p):
+                return True
+        else:
+            if rel_path == p:
+                return True
+    return False
+
+def _force_update_from_github():
     """
-    Compare LOCAL_VERSION avec la version distante (version.txt sur GitHub).
-    Si différente => affiche un message d'alerte en rouge.
+    Télécharge le ZIP du repo GitHub (branche) et remplace les fichiers locaux,
+    en préservant ceux listés dans PRESERVE_PATHS. Redémarre ensuite le programme.
+    """
+    zip_url = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/archive/refs/heads/{GITHUB_BRANCH}.zip"
+    print(Fore.CYAN + "⬇️ Téléchargement de la mise à jour..." + Style.RESET_ALL)
+    r = requests.get(zip_url, timeout=30)
+    r.raise_for_status()
+
+    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+        # Racine du zip: <repo>-<branch>/
+        top = z.namelist()[0].split("/")[0]
+        for member in z.infolist():
+            if member.is_dir():
+                continue
+            path_in_zip = member.filename
+            if not path_in_zip.startswith(top + "/"):
+                continue
+            rel_path = path_in_zip[len(top) + 1:]  # chemin relatif projet
+
+            if not rel_path or rel_path.endswith("/"):
+                continue
+            if _is_preserved(rel_path):
+                # print(f"[skip] {rel_path}")
+                continue
+
+            target_path = os.path.join(os.getcwd(), rel_path)
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            with z.open(member, "r") as src, open(target_path, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+
+    print(Fore.GREEN + "✅ Mise à jour installée. Redémarrage..." + Style.RESET_ALL)
+    time.sleep(0.5)
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+def check_and_force_update():
+    """
+    Compare la version distante (version.txt) avec la locale.
+    Si distante > locale → demande une validation (Entrée) avant d'installer.
     """
     try:
-        r = requests.get(VERSION_URL, timeout=5)
-        if r.status_code == 200:
-            latest = r.text.strip()
-            if latest != LOCAL_VERSION:
-                # Encadré rouge d’alerte
-                msg1 = f" Nouvelle version disponible : {latest} "
-                msg2 = f" Version actuelle : {LOCAL_VERSION} "
-                bar_len = max(len(msg1), len(msg2)) + 4
-                print(Fore.RED + "█" * bar_len)
-                print("█ " + msg1.ljust(bar_len - 3) + "█")
-                print("█ " + msg2.ljust(bar_len - 3) + "█")
-                print("█ " + "Mets à jour depuis ton GitHub.".ljust(bar_len - 3) + "█")
-                print("█" * bar_len + Style.RESET_ALL + "\n")
-            else:
-                print(Fore.GREEN + f"✅ Version à jour ({LOCAL_VERSION}).\n" + Style.RESET_ALL)
-        else:
+        resp = requests.get(VERSION_URL, timeout=8)
+        if resp.status_code != 200:
             print(Fore.YELLOW + "⚠️ Impossible de vérifier la version en ligne.\n" + Style.RESET_ALL)
+            return
+
+        latest = resp.text.strip()
+
+        if _parse_version(latest) > _parse_version(LOCAL_VERSION):
+            msg1 = f" Nouvelle version détectée : {latest} "
+            msg2 = f" Version actuelle : {LOCAL_VERSION} "
+            msg3 = " Appuie sur Entrée pour télécharger et installer la mise à jour "
+            bar_len = max(len(msg1), len(msg2), len(msg3)) + 4
+
+            print(Fore.RED + "█" * bar_len)
+            print("█ " + msg1.ljust(bar_len - 3) + "█")
+            print("█ " + msg2.ljust(bar_len - 3) + "█")
+            print("█ " + msg3.ljust(bar_len - 3) + "█")
+            print("█" * bar_len + Style.RESET_ALL + "\n")
+
+            # ✅ L’utilisateur doit valider pour lancer l’installation
+            choice = input(Fore.YELLOW + "➡️  Appuie sur Entrée pour installer maintenant (ou tape N pour annuler) : " + Style.RESET_ALL).strip().lower()
+            if choice in ("", "o", "y"):  # Entrée (vide) ou oui
+                _force_update_from_github()
+            else:
+                print(Fore.CYAN + "⏭️  Mise à jour ignorée, démarrage du tool...\n" + Style.RESET_ALL)
+        else:
+            print(Fore.GREEN + f"✅ Version à jour ({LOCAL_VERSION}).\n" + Style.RESET_ALL)
+
     except Exception as e:
         print(Fore.YELLOW + f"⚠️ Vérification de mise à jour échouée : {e}\n" + Style.RESET_ALL)
+
+
+# =========================
+# ====== TON TOOL UI ======
+# =========================
 
 translations = {
     "fr": {
@@ -175,7 +268,7 @@ def scraps_tools_menu():
     print(margin + Fore.GREEN + "[2]" + Fore.RED + f" {t['option_2']}")
     print(margin + Fore.GREEN + "[3]" + Fore.RED + f" {t['option_3']}")
     print(margin + Fore.GREEN + "[4]" + Fore.RED + f" {t['option_4']}")
-    print(margin + Fore.GREEN + "[5]" + Fore.Red + " Start script : (Collect Profiles + emails + acc's info's)")
+    print(margin + Fore.GREEN + "[5]" + Fore.RED + " Start script : (Collect Profiles + emails + acc's info's)")
     print(margin + Fore.GREEN + "[v]" + Fore.RED + f" {t['option_v']}")
     print(margin + Fore.YELLOW + "[b]" + Fore.RED + f" {t['return_menu']}")
     print()
@@ -380,8 +473,8 @@ def launch_foryou_panel():
         input(f"{t['return_menu']}...".center(140))
 
 def main():
-    # ✅ Vérifie la mise à jour au démarrage
-    check_for_update()
+    # 🔐 Force update si une version plus récente est dispo
+    check_and_force_update()
 
     while True:
         lang = load_language()
