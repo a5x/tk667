@@ -29,7 +29,7 @@ if os.name == 'nt':
 # =========================
 
 # Version locale affichée dans l'UI (peut rester "ancienne", c'est version.txt côté GitHub qui déclenche)
-LOCAL_VERSION = "2.1"
+LOCAL_VERSION = "2.2"
 
 # Ton dépôt GitHub
 GITHUB_OWNER  = "a5x"
@@ -552,3 +552,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
