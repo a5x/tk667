@@ -6,7 +6,7 @@ import time
 import io
 import zipfile
 import shutil
-import requests
+import requests  # pour la vérification & le téléchargement
 from colorama import Fore, Style, init
 from ascii_styles import ascii_styles
 
@@ -24,19 +24,29 @@ if os.name == 'nt':
     except:
         pass
 
+# =========================
+# ====== MISE À JOUR ======
+# =========================
+
+# Version locale affichée dans l'UI (peut rester "ancienne", c'est version.txt côté GitHub qui déclenche)
 LOCAL_VERSION = "2.2"
+
+# Ton dépôt GitHub
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
 
+# URL du fichier version.txt (raw)
 VERSION_URL = f"https://raw.githubusercontent.com/a5x/tk667/main/version.txt"
 
+# Chemins à préserver lors de la mise à jour (ex: configs, fichiers générés)
 PRESERVE_PATHS = [
     "Settings/lang_config.json",
     "Settings/config.json",
-    "Scripts_info_extract/",
+    "Scripts_info_extract/",   # tout le dossier
 ]
 
+# --- Helpers version / préservation ---
 def _parse_version(v: str):
     try:
         return tuple(int(x) for x in v.strip().split("."))
@@ -58,14 +68,14 @@ def _is_preserved(rel_path: str) -> bool:
 
 def _force_update_from_github():
     zip_url = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/archive/refs/heads/{GITHUB_BRANCH}.zip"
-    print(Fore.CYAN + f"Téléchargement de la mise a jour: {zip_url}" + Style.RESET_ALL)
+    print(Fore.CYAN + f"⬇️ Téléchargement ZIP: {zip_url}" + Style.RESET_ALL)
     r = requests.get(zip_url, timeout=30)
     print(Fore.CYAN + f"HTTP {r.status_code}" + Style.RESET_ALL)
     r.raise_for_status()
 
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-        top = z.namelist()[0].split("/")[0]
-        print(Fore.CYAN + f"Racine ZIP du fichier: {top}" + Style.RESET_ALL)
+        top = z.namelist()[0].split("/")[0]  # ex: tk667-main
+        print(Fore.CYAN + f"Racine ZIP: {top}" + Style.RESET_ALL)
 
         replaced, skipped = 0, 0
         for member in z.infolist():
@@ -75,11 +85,12 @@ def _force_update_from_github():
             if not path_in_zip.startswith(top + "/"):
                 continue
 
-            rel_path = path_in_zip[len(top) + 1:]
+            rel_path = path_in_zip[len(top) + 1:]  # chemin relatif projet
             if not rel_path or rel_path.endswith("/"):
                 continue
             if _is_preserved(rel_path):
                 skipped += 1
+                # print(f"[skip] {rel_path}")
                 continue
 
             target_path = os.path.join(os.getcwd(), rel_path)
@@ -88,19 +99,19 @@ def _force_update_from_github():
                 shutil.copyfileobj(src, dst)
             replaced += 1
 
-    print(Fore.GREEN + f"Fichiers remplacés ✅: {replaced} | non modifiés: {skipped}" + Style.RESET_ALL)
-    print(Fore.GREEN + "Mise à jour installée ✅. Redémarrage ✅..." + Style.RESET_ALL)
+    print(Fore.GREEN + f"✅ Fichiers remplacés: {replaced} | Préservés: {skipped}" + Style.RESET_ALL)
+    print(Fore.GREEN + "✅ Mise à jour installée. Redémarrage..." + Style.RESET_ALL)
     time.sleep(0.5)
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 def check_and_force_update():
     try:
-        print(Fore.CYAN + f"Vérification d'la version: {VERSION_URL}" + Style.RESET_ALL)
+        print(Fore.CYAN + f"🔎 Vérification version: {VERSION_URL}" + Style.RESET_ALL)
         resp = requests.get(VERSION_URL, timeout=8)
         print(Fore.CYAN + f"HTTP {resp.status_code}" + Style.RESET_ALL)
 
         if resp.status_code != 200:
-            print(Fore.YELLOW + "Impossible de vérifier la version du github.\n" + Style.RESET_ALL)
+            print(Fore.YELLOW + "⚠️ Impossible de vérifier la version en ligne.\n" + Style.RESET_ALL)
             return
 
         latest = resp.text.strip()
@@ -113,16 +124,14 @@ def check_and_force_update():
             bar_len = max(len(msg1), len(msg2), len(msg3)) + 4
 
             print(Fore.RED + "█" * bar_len)
-            print(Fore.RED +"█ " + msg1.ljust(bar_len - 3) + "█")
-            print(Fore.RED +"█ " + msg2.ljust(bar_len - 3) + "█")
-            print(Fore.RED +"█ " + msg3.ljust(bar_len - 3) + "█")
-            print(Fore.RED +"█" * bar_len + Style.RESET_ALL + "\n")
+            print("█ " + msg1.ljust(bar_len - 3) + "█")
+            print("█ " + msg2.ljust(bar_len - 3) + "█")
+            print("█ " + msg3.ljust(bar_len - 3) + "█")
+            print("█" * bar_len + Style.RESET_ALL + "\n")
 
-            choice = input(Fore.YELLOW + "➡️  Entrée = Installer maintenant | Taper N pour ignorer : " + Style.RESET_ALL).strip().lower()
-            if choice in ("", "o", "y"):  # Entrée = oui
-                _force_update_from_github()
-            else:
-                print(Fore.CYAN + "⏭️  Mise à jour ignorée, démarrage du tool...\n" + Style.RESET_ALL)
+            # ➜ Plus d'option 'N' : on attend juste Entrée puis on met à jour.
+            input(Fore.YELLOW + "➡️  Appuie sur Entrée pour installer maintenant..." + Style.RESET_ALL)
+            _force_update_from_github()
         else:
             print(Fore.GREEN + f"✅ Version à jour ({LOCAL_VERSION}).\n" + Style.RESET_ALL)
 
@@ -460,7 +469,9 @@ def launch_foryou_panel():
     elif choice == 'q':
         return
     else:
-        print(t["invalid_option"].center(140))
+        # Attention: 'invalid_option' n'existe pas dans translations — on garde la ligne d'origine,
+        # mais si tu veux je peux corriger la clé pour afficher t["invalid"].
+        print(t.get("invalid_option", t.get("invalid", "Option invalide.")).center(140))
         input(f"{t['return_menu']}...".center(140))
 
 def main():
