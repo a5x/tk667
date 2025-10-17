@@ -129,11 +129,9 @@ def check_and_force_update():
             print("█ " + msg3.ljust(bar_len - 3) + "█")
             print("█" * bar_len + Style.RESET_ALL + "\n")
 
-            choice = input(Fore.YELLOW + "➡️  Entrée = Installer maintenant | Taper N pour ignorer : " + Style.RESET_ALL).strip().lower()
-            if choice in ("", "o", "y"):  # Entrée = oui
-                _force_update_from_github()
-            else:
-                print(Fore.CYAN + "⏭️  Mise à jour ignorée, démarrage du tool...\n" + Style.RESET_ALL)
+            # ➜ Plus d'option 'N' : on attend juste Entrée puis on met à jour.
+            input(Fore.YELLOW + "➡️  Appuie sur Entrée pour installer maintenant..." + Style.RESET_ALL)
+            _force_update_from_github()
         else:
             print(Fore.GREEN + f"✅ Version à jour ({LOCAL_VERSION}).\n" + Style.RESET_ALL)
 
@@ -471,7 +469,9 @@ def launch_foryou_panel():
     elif choice == 'q':
         return
     else:
-        print(t["invalid_option"].center(140))
+        # Attention: 'invalid_option' n'existe pas dans translations — on garde la ligne d'origine,
+        # mais si tu veux je peux corriger la clé pour afficher t["invalid"].
+        print(t.get("invalid_option", t.get("invalid", "Option invalide.")).center(140))
         input(f"{t['return_menu']}...".center(140))
 
 def main():
