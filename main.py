@@ -24,7 +24,7 @@ if os.name == 'nt':
     except:
         pass
 
-LOCAL_VERSION = "0.0"
+LOCAL_VERSION = "2.3"
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
@@ -534,3 +534,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
