@@ -24,7 +24,7 @@ if os.name == 'nt':
     except:
         pass
 
-LOCAL_VERSION = "2.2"
+LOCAL_VERSION = "2.3"
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
@@ -238,6 +238,7 @@ def menu():
     print(margin + Fore.GREEN + "[1]" + Fore.RED + " Tools for Scraping")
     print(margin + Fore.GREEN + "[2]" + Fore.RED + " Tools for Tiktok")
     print(margin + Fore.YELLOW + "[3]" + Fore.RED + " Settings")
+    print(margin + Fore.YELLOW + "[4]" + Fore.RED + " Soon Change Region")
     print(margin + Fore.RED + "[Q]" + Fore.RED + " " + t["option_q"])
     print()
 
