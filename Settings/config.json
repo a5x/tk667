@@ -1,3 +1,6 @@
 {
-    "scrolls": 16
+  "scrolls": 6,
+  "theme": "system",
+  "logo_png": "667.png",
+  "color_theme": "green"
 }

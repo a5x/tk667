@@ -1,41 +1,203 @@
 import os
 import sys
 import json
-import random
-import time
 import io
 import zipfile
 import shutil
-import requests
-from colorama import Fore, Style, init
-from ascii_styles import ascii_styles
+import threading
+import subprocess
+import time
+from pathlib import Path
 
-init(autoreset=True)
+import tkinter as tk
+from tkinter import ttk, messagebox, simpledialog
 
-if os.name == 'nt':
-    try:
-        import ctypes
-        user32 = ctypes.windll.user32
-        screen_width = user32.GetSystemMetrics(0)
-        screen_height = user32.GetSystemMetrics(1)
-        cols = min(240, screen_width // 8)
-        lines = min(60, screen_height // 16)
-        os.system(f'mode con: cols={cols} lines={lines}')
-    except:
-        pass
+try:
+    import requests
+except Exception:
+    requests = None
 
-LOCAL_VERSION = "2.3"
+APP_TITLE = "667 SCRAPER"
+APP_MIN_SIZE = (1024, 640)
+
+LOCAL_VERSION = "2.4"
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
-
-VERSION_URL = f"https://raw.githubusercontent.com/a5x/tk667/main/version.txt"
+VERSION_URL = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/main/version.txt"
 
 PRESERVE_PATHS = [
     "Settings/lang_config.json",
     "Settings/config.json",
-    "Scripts_info_extract/",
+    "txt_files/",
 ]
+
+translations = {
+    "fr": {
+        "menu_title": "========= New Release 2.1 =========",
+        "option_1": "Démarrer : (collecte profils)",
+        "option_2": "Démarrer : (check bio pour emails)",
+        "option_3": "Lancer : Scripts Collect + emails",
+        "option_4": "TikTok hashtag scraper",
+        "option_v": "Scrap Blue Badge accounts",
+        "option_i": "Tiktok Infos Finder",
+        "option_t": "Comment utiliser le tool",
+        "option_cc": "Nettoyer les fichiers",
+        "option_c": "Changer la langue",
+        "option_s": "Paramètre (nombre de scroll)",
+        "option_l": "Changelogs",
+        "option_q": "Fermer",
+        "option_create": "Créer un scraper hashtag perso",
+        "panel_header": "Scraper TikTok par hashtag",
+        "panel_create_personal": "Créer perso",
+        "return_menu": "Retour au menu",
+        "invalid": "Option invalide.",
+        "scraper_prompt": ">> ",
+        "choose": "Choisissez : ",
+        "bye": "Au revoir !",
+        "submenu_1_title": "=========== Choissisez une option ===========",
+        "submenu_2_title": "=========== Choissisez une option ===========",
+        "submenu_3_title": "=========== Paramètres ===========",
+        "btn_check_updates": "Vérifier les mises à jour",
+        "lbl_console": "Console",
+        "nav_home": "Accueil",
+        "nav_scraping": "Scraping Tools",
+        "nav_tiktok": "TikTok Tools",
+        "nav_settings": "Paramètres",
+        "nav_changelog": "Changelogs",
+        "home_welcome": "Bienvenue ! Choisissez une section dans le menu de gauche.",
+        "btn_send_telegram": "Envoyer le fichier sur Telegram",
+        "btn_infinite_report": "Infinite Report @ [NOT FINISHED]",
+        "btn_convert_cookies": "Convertir les cookies",
+        "btn_save": "Sauvegarder",
+        "tuto_title": "Tuto",
+        "not_found_title": "Introuvable",
+        "not_found_text": "Le script n'existe pas : {path}",
+        "ok_title": "OK",
+        "saved_param": "Paramètre sauvegardé.",
+        "lang_title": "Langue",
+        "lang_changed": "Langue modifiée. Certaines étiquettes changeront au prochain redémarrage.",
+        "ask_custom_scraper_title": "Custom Scraper",
+        "ask_custom_scraper_body": "Combien de liens veux-tu ?",
+        "option_theme": "Thème (console)",
+        "theme_system": "Système",
+        "theme_light": "Clair",
+        "theme_dark": "Sombre",
+        "theme_saved": "Thème appliqué.",
+        "option_logo": "Logo (PNG dans Settings)",
+        "logo_saved": "Logo mis à jour.",
+        "option_color": "Couleur (UI)",
+        "color_sky": "Bleu ciel",
+        "color_blue": "Bleu foncé",
+        "color_red": "Rouge",
+        "color_yellow": "Jaune",
+        "color_green": "Vert",
+        "color_saved": "Couleur appliquée."
+    },
+    "en": {
+        "menu_title": "========= New Release 2.1 =========",
+        "option_1": "Start : (collect profiles)",
+        "option_2": "Start : (check about me for emails)",
+        "option_3": "Run : Collect + emails",
+        "option_4": "TikTok hashtag scraper",
+        "option_v": "Scrap Blue Badge accounts",
+        "option_i": "Tiktok Infos Finder",
+        "option_t": "How to use tools",
+        "option_cc": "Clean files",
+        "option_c": "Change language",
+        "option_s": "Setting (scroll count)",
+        "option_l": "Changelogs",
+        "option_q": "Close",
+        "option_create": "Create custom hashtag scraper",
+        "panel_header": "TikTok Hashtag Scraper",
+        "panel_create_personal": "Create custom",
+        "return_menu": "Return to menu",
+        "invalid": "Invalid option.",
+        "scraper_prompt": ">> ",
+        "choose": "Choose: ",
+        "bye": "Goodbye!",
+        "submenu_1_title": "=========== Choose an option ===========",
+        "submenu_2_title": "=========== Choose an option ===========",
+        "submenu_3_title": "=========== Settings ===========",
+        "btn_check_updates": "Check for updates",
+        "lbl_console": "Console",
+        "nav_home": "Home",
+        "nav_scraping": "Scraping Tools",
+        "nav_tiktok": "TikTok Tools",
+        "nav_settings": "Settings",
+        "nav_changelog": "Changelogs",
+        "home_welcome": "Welcome! Pick a section from the left menu.",
+        "btn_send_telegram": "Send file to Telegram",
+        "btn_infinite_report": "Infinite Report @ [PAS FINI]",
+        "btn_convert_cookies": "Convert Cookies",
+        "btn_save": "Save",
+        "tuto_title": "Tutorial",
+        "not_found_title": "Not found",
+        "not_found_text": "Script does not exist: {path}",
+        "ok_title": "OK",
+        "saved_param": "Setting saved.",
+        "lang_title": "Language",
+        "lang_changed": "Language changed. Some labels update on next restart.",
+        "ask_custom_scraper_title": "Custom Scraper",
+        "ask_custom_scraper_body": "How many links do you want?",
+        "option_theme": "Theme (console)",
+        "theme_system": "System",
+        "theme_light": "Light",
+        "theme_dark": "Dark",
+        "theme_saved": "Theme applied.",
+        "option_logo": "Logo (PNG in Settings)",
+        "logo_saved": "Logo updated.",
+        "option_color": "Color (UI)",
+        "color_sky": "Sky blue",
+        "color_blue": "Dark blue",
+        "color_red": "Red",
+        "color_yellow": "Yellow",
+        "color_green": "Green",
+        "color_saved": "Color applied."
+    }
+}
+
+SETTINGS_DIR = Path("Settings")
+SETTINGS_DIR.mkdir(exist_ok=True)
+LANG_FILE = SETTINGS_DIR / "lang_config.json"
+CONFIG_FILE = SETTINGS_DIR / "config.json"
+
+def load_language() -> str:
+    if LANG_FILE.exists():
+        try:
+            return json.loads(LANG_FILE.read_text(encoding="utf-8")).get("lang", "fr")
+        except Exception:
+            return "fr"
+    return "fr"
+
+def save_language(lang: str):
+    LANG_FILE.write_text(json.dumps({"lang": lang}, ensure_ascii=False), encoding="utf-8")
+
+def load_config() -> dict:
+    if CONFIG_FILE.exists():
+        try:
+            return json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+    return {}
+
+def save_config(cfg: dict):
+    CONFIG_FILE.write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
+
+def list_settings_pngs():
+    try:
+        return [p.name for p in SETTINGS_DIR.glob("*.png")]
+    except Exception:
+        return []
+
+def get_logo_path_from_config(cfg=None):
+    if cfg is None:
+        cfg = load_config()
+    logo = cfg.get("logo_png")
+    if not logo:
+        return None
+    p = SETTINGS_DIR / logo
+    return str(p) if p.exists() else None
 
 def _parse_version(v: str):
     try:
@@ -43,495 +205,433 @@ def _parse_version(v: str):
     except Exception:
         return tuple(v.strip().split("."))
 
-def _is_preserved(rel_path: str) -> bool:
-    rel_path = rel_path.replace("\\", "/")
-    for p in PRESERVE_PATHS:
-        p = p.replace("\\", "/")
-        if p.endswith("/"):
-            if rel_path.startswith(p):
-                return True
-        else:
-            if rel_path == p:
-                return True
-    return False
-
-
-def _force_update_from_github():
-    zip_url = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/archive/refs/heads/{GITHUB_BRANCH}.zip"
-    print(Fore.CYAN + f"Téléchargement du ZIP depuis le github: {zip_url}" + Style.RESET_ALL)
-    r = requests.get(zip_url, timeout=30)
-    print(Fore.CYAN + f"HTTP {r.status_code}" + Style.RESET_ALL)
-    r.raise_for_status()
-
-    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-        top = z.namelist()[0].split("/")[0]
-        print(Fore.CYAN + f"Racine ZIP !: {top}" + Style.RESET_ALL)
-
-        replaced, skipped = 0, 0
-        for member in z.infolist():
-            if member.is_dir():
-                continue
-            path_in_zip = member.filename
-            if not path_in_zip.startswith(top + "/"):
-                continue
-
-            rel_path = path_in_zip[len(top) + 1:]
-            if not rel_path or rel_path.endswith("/"):
-                continue
-            if _is_preserved(rel_path):
-                skipped += 1
-                continue
-
-            target_path = os.path.join(os.getcwd(), rel_path)
-            os.makedirs(os.path.dirname(target_path), exist_ok=True)
-            with z.open(member, "r") as src, open(target_path, "wb") as dst:
-                shutil.copyfileobj(src, dst)
-            replaced += 1
-
-    print(Fore.GREEN + f"Fichiers remplacés : {replaced} ✅ | non modifiés: {skipped} ✅" + Style.RESET_ALL)
-    print(Fore.GREEN + "Mise à jour installée ✅. Redémarrage..." + Style.RESET_ALL)
-    time.sleep(0.5)
-    os.execv(sys.executable, [sys.executable] + sys.argv)
-
-def check_and_force_update():
-    try:
-        print(Fore.CYAN + f"Vérification de la version: {VERSION_URL}" + Style.RESET_ALL)
-        resp = requests.get(VERSION_URL, timeout=8)
-        print(Fore.CYAN + f"HTTP {resp.status_code}" + Style.RESET_ALL)
-
-        if resp.status_code != 200:
-            print(Fore.YELLOW + "Impossible de vérifier la version sur le github.\n" + Style.RESET_ALL)
-            return
-
-        latest = resp.text.strip()
-        print(Fore.CYAN + f"Distante: {latest} | Locale: {LOCAL_VERSION}" + Style.RESET_ALL)
-
-        if _parse_version(latest) > _parse_version(LOCAL_VERSION):
-            msg1 = f" Nouvelle version détectée : {latest} "
-            msg2 = f" Version actuelle : {LOCAL_VERSION} "
-            msg3 = " Appuie sur Entrée pour télécharger et installer la mise à jour "
-            bar_len = max(len(msg1), len(msg2), len(msg3)) + 4
-
-            print(Fore.RED + "█" * bar_len)
-            print(Fore.RED +"█ " + msg1.ljust(bar_len - 3) + "█")
-            print(Fore.RED +"█ " + msg2.ljust(bar_len - 3) + "█")
-            print(Fore.RED +"█ " + msg3.ljust(bar_len - 3) + "█")
-            print(Fore.RED +"█" * bar_len + Style.RESET_ALL + "\n")
-
-            input(Fore.YELLOW + "Appuie sur Entrée pour installer..." + Style.RESET_ALL)
-            _force_update_from_github()
-        else:
-            print(Fore.GREEN + f"Version à jour ({LOCAL_VERSION}).\n" + Style.RESET_ALL)
-
-    except Exception as e:
-        print(Fore.YELLOW + f"Vérification de la mise à jour échouée : {e}\n" + Style.RESET_ALL)
-
-translations = {
-    "fr": {
-        "menu_title": "========= New Release 2.1 =========",
-        "option_1": "Démarrer le script de collecte d'@",
-        "option_2": "Démarrer le script de vérification des bio",
-        "option_3": "Lancer le script au complet",
-        "option_4": "Tiktok hashtag scraper",
-        "option_v": "Recupérer les comptes avec la certif",
-        "option_i": "Tiktok Infos Finder",
-        "option_t": "Comment utiliser le tool pour les nuls",
-        "option_cc": "Nettoie les fichiers textes",
-        "option_c": "Changer la langue du tool",
-        "option_s": "Paramètres (nombre de scroll)",
-        "option_l": "Changelogs",
-        "option_q": "Fermer le Tool",
-        "option_create": "Créer un scraper hashtag personnalisé",
-        "panel_header": "Scraper TikTok par hashtag",
-        "return_menu": "Retour au menu",
-        "invalid": "Option invalide.",
-        "scraper_prompt": ">> ",
-        "choose": "Choisissez une option : ",
-        "bye": "Au revoir !",
-        "choose_submenu_option": "Choisissez une option (ou [b] pour revenir) : ",
-        "submenu_1_title": "=============== Choissisez une option ===============",
-        "submenu_2_title": "=============== Choissisez une option ===============",
-        "submenu_3_title": "=========== Paramètres ==========="
-    },
-    "en": {
-        "menu_title": "========= New Release 2.1 =========",
-        "option_1": "Start script : (collect profiles)",
-        "option_2": "Start script : (check about me for emails)",
-        "option_3": "Start script : Run Compiled Scripts Collect + emails",
-        "option_4": "Start script : TikTok hashtag scraper",
-        "option_v": "Start script : Scrap Blue Badge accounts",
-        "option_i": "Tiktok Infos Finder",
-        "option_t": "How to use tools for noobie",
-        "option_cc": "Clean save files",
-        "option_c": "Change language",
-        "option_s": "Settings (Scroll for scrapping)",
-        "option_l": "Changelogs",
-        "option_q": "Quit/Close",
-        "option_create": "Create a custom hashtag scraper",
-        "panel_header": "TikTok Hashtag Scraper",
-        "return_menu": "Return to menu",
-        "invalid": "Invalid option.",
-        "scraper_prompt": ">> ",
-        "choose": "Choose an option: ",
-        "bye": "Goodbye !",
-        "choose_submenu_option": "Choose an option (or [b] to go back): ",
-        "submenu_1_title": "=========== Choose an option ===========",
-        "submenu_2_title": "=========== Choose an option ===========",
-        "submenu_3_title": "=========== Settings ==========="
-    },
-    "ru": {
-        "menu_title": "========= New Release 2.1 =========",
-        "option_1": "Запуск скрипта A (сбор имен пользователей)",
-        "option_2": "Запуск скрипта B (проверка био на email)",
-        "option_3": "Запустить Скрипт A, затем Скрипт B автоматически",
-        "option_4": "TikTok скрапер по хэштегу",
-        "option_v": "Скрап Blue Badge",
-        "option_i": "Инфо (tiktok_info.py)",
-        "option_t": "Обучение (как использовать инструмент)",
-        "option_cc": "Очистить сохранённые файлы",
-        "option_c": "Изменить язык",
-        "option_s": "Настройки",
-        "option_l": "Changelogs",
-        "option_q": "Выход",
-        "bye": "Bye",
-        "option_create": "Создать пользовательский скрапер по хэштегу",
-        "panel_header": "Скрапер TikTok по хэштегу",
-        "return_menu": "Вернуться в меню",
-        "invalid": "Неверная опция.",
-        "scraper_prompt": ">> ",
-        "choose_submenu_option": "Выберите опцию (или [b] для возврата): ",
-        "submenu_1_title": "=========== Инструменты сбора данных ===========",
-        "submenu_2_title": "=========== Вторые скрипты ===========",
-        "submenu_3_title": "=========== Настройки ==========="
-    }
-}
-
-def load_language():
-    if os.path.exists("Settings/lang_config.json"):
-        with open("Settings/lang_config.json", "r", encoding="utf-8") as f:
-            return json.load(f).get("lang", "fr")
-    return "fr"
-
-def save_language(lang):
-    with open("Settings/lang_config.json", "w", encoding="utf-8") as f:
-        json.dump({"lang": lang}, f)
-
-def clear_console():
-    os.system('cls' if os.name == 'nt' else 'clear')
-
-def horizontal_gradient_text(text):
-    return ''.join(Fore.LIGHTGREEN_EX + char if char != ' ' else char for char in text) + Style.RESET_ALL
-
-def print_banner():
-    banner_lines = random.choice(list(ascii_styles.values()))
-    for line in banner_lines:
-        print(horizontal_gradient_text(line))
-
-def menu():
-    lang = load_language()
-    t = translations[lang]
-    clear_console()
-    print_banner()
-    margin = " " * 50
-    print("\n" + margin + Fore.WHITE + Style.BRIGHT + t["menu_title"])
-    print()
-    print(margin + Fore.GREEN + "[1]" + Fore.RED + " Tools for Scraping")
-    print(margin + Fore.GREEN + "[2]" + Fore.RED + " Tools for Tiktok")
-    print(margin + Fore.YELLOW + "[3]" + Fore.RED + " Settings")
-    print(margin + Fore.YELLOW + "[4]" + Fore.RED + " Soon Change Region")
-    print(margin + Fore.RED + "[Q]" + Fore.RED + " " + t["option_q"])
-    print()
-
-def scraps_tools_menu():
-    lang = load_language()
-    t = translations[lang]
-    clear_console()
-    print_banner()
-    margin = " " * 50
-    print("\n" + margin + Fore.CYAN + Style.BRIGHT + t["submenu_1_title"] + Style.RESET_ALL)
-    print(margin + Fore.GREEN + "[1]" + Fore.RED + f" {t['option_1']}")
-    print(margin + Fore.GREEN + "[2]" + Fore.RED + f" {t['option_2']}")
-    print(margin + Fore.GREEN + "[3]" + Fore.RED + f" {t['option_3']}")
-    print(margin + Fore.GREEN + "[4]" + Fore.RED + f" {t['option_4']}")
-    print(margin + Fore.GREEN + "[5]" + Fore.RED + " Start script : (Collect Profiles + emails + acc's info's)")
-    print(margin + Fore.GREEN + "[v]" + Fore.RED + f" {t['option_v']}")
-    print(margin + Fore.YELLOW + "[b]" + Fore.RED + f" {t['return_menu']}")
-    print()
-
-def second_scripts_menu():
-    lang = load_language()
-    t = translations[lang]
-    clear_console()
-    print_banner()
-    margin = " " * 50
-    print("\n" + margin + Fore.CYAN + Style.BRIGHT + t["submenu_2_title"] + Style.RESET_ALL)
-    print(margin + Fore.MAGENTA + "[t]" + Fore.RED + f" {t['option_t']}")
-    print(margin + Fore.MAGENTA + "[tl]" + Fore.RED + " Send file to telegram chat")
-    print(margin + Fore.MAGENTA + "[r]" + Fore.RED + " Infinite Report @")
-    print(margin + Fore.MAGENTA + "[cc]" + Fore.RED + f" {t['option_cc']}")
-    print(margin + Fore.MAGENTA + "[ck]" + Fore.RED + " Convert Cookies")
-    print(margin + Fore.YELLOW + "[b]" + Fore.RED + f" {t['return_menu']}")
-    print()
-
-def settings_menu():
-    lang = load_language()
-    t = translations[lang]
-    clear_console()
-    print_banner()
-    margin = " " * 50
-    print("\n" + margin + Fore.CYAN + Style.BRIGHT + t["submenu_3_title"] + Style.RESET_ALL)
-    print(margin + Fore.YELLOW + "[S]" + Fore.RED + f" {t['option_s']}")
-    print(margin + Fore.YELLOW + "[C]" + Fore.RED + f" {t['option_c']}")
-    print(margin + Fore.BLUE + "[L]" + Fore.RED + f" {t['option_l']}")
-    print(margin + Fore.RED + "[Q]" + Fore.RED + f" {t['option_q']}")
-    print(margin + Fore.GREEN + "[T]" + Fore.RED + f" {t['option_t']}")
-    print(margin + Fore.YELLOW + "[b]" + Fore.RED + f" {t['return_menu']}")
-    print()
-
-def run_script(script_name):
-    print(Fore.YELLOW + f"Lancement de {script_name}...\n" + Style.RESET_ALL)
-    exit_code = os.system(f"{sys.executable} {script_name}")
-    if exit_code != 0:
-        print(Fore.RED + f"Erreur lors de l'exécution de {script_name} (code {exit_code})" + Style.RESET_ALL)
-
-def run_scripts_automatic():
-    run_script("Scripts/a.py")
-    run_script("Scripts/b.py")
-
-def choose_language():
-    clear_console()
-    print("🌐 Choisissez une langue / Choose a language / Выберите язык:\n")
-    print("[1] Français")
-    print("[2] English")
-    print("[3] Русский")
-    choice = input("\n>> ").strip()
-    if choice == '1':
-        save_language("fr")
-    elif choice == '2':
-        save_language("en")
-    elif choice == '3':
-        save_language("ru")
-    else:
-        print("Choix invalide.")
-        input("\nAppuyez sur Entrée pour revenir au menu...")
+def check_update_gui(root: tk.Tk, console_append):
+    if not requests:
         return
-    input("\nAppuyez sur Entrée pour revenir au menu...")
+    def task():
+        try:
+            console_append(f"Checking update version : {VERSION_URL}\n")
+            r = requests.get(VERSION_URL, timeout=8)
+            console_append(f"HTTP {r.status_code}\n")
+            if r.status_code != 200:
+                console_append("Error can't find the version on the github page.\n")
+                return
+            latest = r.text.strip()
+            console_append(f"Last Released Update : {latest} | Your Update Version : {LOCAL_VERSION}\n")
+        except Exception as e:
+            console_append(f"Update checking failed : {e}\n")
+    threading.Thread(target=task, daemon=True).start()
 
-def settings():
-    CONFIG_FILE = "Settings/config.json"
-    config = {}
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r") as f:
+class ProcessRunner:
+    def __init__(self, console_append):
+        self.proc = None
+        self.console_append = console_append
+        self.lock = threading.Lock()
+    def run(self, cmd, cwd=None):
+        with self.lock:
+            if self.proc and self.proc.poll() is None:
+                self.console_append("Un script est déjà en cours.\n")
+                return
             try:
-                config = json.load(f)
-            except:
+                self.console_append(f"\n$ {' '.join(cmd)}\n")
+                self.proc = subprocess.Popen(
+                    cmd, cwd=cwd, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT, text=True, bufsize=1
+                )
+            except FileNotFoundError:
+                self.console_append("Python ou le script est introuvable.\n")
+                return
+        def reader():
+            try:
+                for line in self.proc.stdout:
+                    self.console_append(line)
+            finally:
+                rc = self.proc.poll()
+                self.console_append(f"\n[Process terminé] Code: {rc}\n")
+        threading.Thread(target=reader, daemon=True).start()
+
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title(APP_TITLE)
+        self.minsize(*APP_MIN_SIZE)
+        self.geometry("1100x700")
+
+        self.style = ttk.Style(self)
+        try:
+            self.call("source", "sun-valley.tcl")
+            self.style.theme_use("sun-valley-light")
+        except Exception:
+            try: self.style.theme_use("clam")
+            except Exception: pass
+
+        cfg = load_config()
+        self.current_theme = cfg.get("theme", "dark")
+        self.current_color = cfg.get("color_theme", "sky")
+
+        top = ttk.Frame(self)
+        top.pack(side=tk.TOP, fill=tk.X)
+        ttk.Label(top, text=APP_TITLE, font=("Segoe UI", 14, "bold")).pack(side=tk.LEFT, padx=10, pady=6)
+        ttk.Button(top, text=translations[load_language()]["btn_check_updates"],
+                   command=lambda: check_update_gui(self, self.console_append)).pack(side=tk.RIGHT, padx=6)
+
+        body = ttk.Frame(self)
+        body.pack(fill=tk.BOTH, expand=True)
+
+        nav = ttk.Frame(body)
+        nav.pack(side=tk.LEFT, fill=tk.Y)
+
+        self.content = ttk.Frame(body)
+        self.content.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+
+        self.content_left = ttk.Frame(self.content)
+        self.content_left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.logo_panel = ttk.Frame(self.content, width=280)
+        self.logo_panel.pack(side=tk.RIGHT, fill=tk.Y)
+        self.logo_panel.pack_propagate(False)
+        self._logo_img = None
+        self.logo_label = ttk.Label(self.logo_panel)
+        self.logo_label.pack(anchor="ne", padx=8, pady=8)
+        ttk.Label(self.logo_panel, text="(Place PNGs in Settings/ and choose one in Settings)").pack(anchor="ne")
+        try: self.refresh_logo()
+        except Exception: pass
+
+        console_frame = ttk.LabelFrame(self, text=translations[load_language()]["lbl_console"])
+        console_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, padx=10, pady=8)
+        self.console = tk.Text(console_frame, height=12, wrap="word")
+        self.console.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        sb = ttk.Scrollbar(console_frame, command=self.console.yview)
+        sb.pack(side=tk.RIGHT, fill=tk.Y)
+        self.console.configure(yscrollcommand=sb.set)
+
+        self.runner = ProcessRunner(self.console_append)
+
+        ttk.Button(nav, text=translations[load_language()]["nav_home"], command=self.show_home).pack(fill=tk.X, padx=6, pady=4)
+        ttk.Button(nav, text=translations[load_language()]["nav_scraping"], command=self.show_scraping).pack(fill=tk.X, padx=6, pady=4)
+        ttk.Button(nav, text=translations[load_language()]["nav_tiktok"], command=self.show_tiktok).pack(fill=tk.X, padx=6, pady=4)
+        ttk.Button(nav, text=translations[load_language()]["nav_settings"], command=self.show_settings).pack(fill=tk.X, padx=6, pady=4)
+        ttk.Button(nav, text=translations[load_language()]["nav_changelog"], command=self.show_changelog).pack(fill=tk.X, padx=6, pady=4)
+
+        self.apply_theme(self.current_theme)
+        self.apply_color_theme(self.current_color)
+
+        self.show_home()
+        self.after(800, lambda: check_update_gui(self, self.console_append))
+
+    def is_dark(self) -> bool:
+        return load_config().get("theme", "dark") == "dark"
+
+    def _refresh_console_colors(self):
+        if self.is_dark():
+            self.console.configure(bg="#000000", fg="#e6e6e6", insertbackground="#e6e6e6")
+        else:
+            self.console.configure(bg="#ffffff", fg="#222222", insertbackground="#222222")
+
+    def apply_theme(self, pref: str):
+        try:
+            self.style.theme_use("sun-valley-light")
+        except Exception:
+            pass
+        self._refresh_console_colors()
+        cfg = load_config()
+        cfg["theme"] = pref
+        save_config(cfg)
+
+    def apply_color_theme(self, name: str):
+        """
+        Accent color for the whole UI (buttons/frames/labels/hover).
+        Options: 'sky', 'blue', 'red', 'yellow', 'green'
+        """
+        palette = {
+            "sky":    {"accent": "#32A9E0", "accent_fg": "#ffffff", "bg": "#F4F6F8"},
+            "blue":   {"accent": "#0B61A4", "accent_fg": "#ffffff", "bg": "#F3F5F8"},
+            "red":    {"accent": "#D94343", "accent_fg": "#ffffff", "bg": "#F8F3F3"},
+            "yellow": {"accent": "#E0B000", "accent_fg": "#111111", "bg": "#F8F6EE"},
+            "green":  {"accent": "#2E7D32", "accent_fg": "#ffffff", "bg": "#F1F7F2"},
+        }
+        if name not in palette:
+            name = "sky"
+        acc  = palette[name]["accent"]
+        acc_fg = palette[name]["accent_fg"]
+        bg   = palette[name]["bg"]
+
+        def darken(hex_color, factor=0.85):
+            c = hex_color.lstrip("#")
+            r = int(c[0:2], 16); g = int(c[2:4], 16); b = int(c[4:6], 16)
+            r = max(0, min(255, int(r*factor)))
+            g = max(0, min(255, int(g*factor)))
+            b = max(0, min(255, int(b*factor)))
+            return f"#{r:02x}{g:02x}{b:02x}"
+
+        hover = darken(acc, 0.9)
+        active = darken(acc, 0.8)
+
+        try:
+            self.configure(bg=bg)
+        except Exception:
+            pass
+
+        for sty in ("TFrame", "TLabelframe", "TLabel"):
+            try:
+                self.style.configure(sty, background=bg)
+            except Exception:
                 pass
-    scrolls = config.get("scrolls", 10)
-    print(f"Nombre actuel de scrolls pour a.py : {scrolls}")
-    try:
-        new_scrolls = int(input("Entrez le nouveau nombre de scrolls (entier > 0) : "))
-        if new_scrolls > 0:
-            config["scrolls"] = new_scrolls
-            with open(CONFIG_FILE, "w") as f:
-                json.dump(config, f, indent=4)
-            print("Paramètre sauvegardé.")
-        else:
-            print("Nombre invalide, aucune modification effectuée.")
-    except ValueError:
-        print("Entrée invalide, aucune modification effectuée.")
-    input("Appuyez sur Entrée pour revenir au menu...")
+        try:
+            self.style.configure("TButton", background=acc, foreground=acc_fg, borderwidth=1, focusthickness=3, focuscolor=acc)
+            self.style.map("TButton",
+                           background=[("active", hover), ("pressed", active)],
+                           foreground=[("disabled", "#888888")])
+        except Exception:
+            pass
+        try:
+            self.style.configure("TLabelframe.Label", background=bg, foreground=darken(acc, 0.7), font=("Segoe UI", 10, "bold"))
+        except Exception:
+            pass
 
-def tuto():
-    clear_console()
-    print_banner()
-    print(Fore.CYAN + "=== Tuto Tiktok Scrapper + checker ===" + Style.RESET_ALL)
-    print("""
-Ce script se compose de deux parties principales :
+        cfg = load_config()
+        cfg["color_theme"] = name
+        save_config(cfg)
 
-1/ Script 1 (collecte usernames)
-   - Accède à la page TikTok Explore avec Selenium.
-   - Fait défiler la page plusieurs fois pour extraire des liens de profils TikTok.
-   - Enregistre les liens dans le fichier : tiktok_profiles.txt
+    def console_append(self, text: str):
+        self.console.configure(state=tk.NORMAL)
+        self.console.insert(tk.END, text)
+        self.console.see(tk.END)
+        self.console.configure(state=tk.NORMAL)
 
-2// Script 2 (filtrage emails)
-   - Récupère les liens dans tiktok_profiles.txt
-   - Ouvre chaque profil TikTok.
-   - Cherche des adresses email dans la bio.
-   - Enregistre les résultats dans : profiles_with_email.txt
+    def refresh_logo(self):
+        from tkinter import PhotoImage
+        self._logo_img = None
+        logo_path = get_logo_path_from_config()
+        try:
+            self.logo_label.configure(image="", text="")
+        except Exception:
+            pass
+        if not logo_path:
+            return
+        try:
+            img = PhotoImage(file=logo_path)
+            w, h = img.width(), img.height()
+            max_w, max_h = 260, 260
+            sx = max(1, (w + max_w - 1) // max_w) if w > max_w else 1
+            sy = max(1, (h + max_h - 1) // max_h) if h > max_h else 1
+            if sx > 1 or sy > 1:
+                img = img.subsample(sx, sy)
+            self._logo_img = img
+            self.logo_label.configure(image=self._logo_img)
+        except Exception:
+            self.logo_label.configure(text=str(logo_path))
 
-3// Script 3 (complet)
-   - Lance les deux script en un pour faire une vérification complète
+    def clear_content(self):
+        for w in self.content_left.winfo_children():
+            w.destroy()
 
-4// Script 4 (Scrap #)
-   - Permet de scrap des bio depuis des # spécifique comme ex : #foryou etc
+    def show_home(self):
+        self.clear_content()
+        frm = ttk.Frame(self.content_left)
+        frm.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
+        center = ttk.Frame(frm)
+        center.place(relx=0.5, rely=0.3, anchor="center")
+        lang = load_language(); t = translations.get(lang, translations["fr"])
+        ttk.Label(center, text=t["menu_title"], font=("Segoe UI", 16, "bold")).pack(anchor="center")
+        ttk.Label(center, text=t["home_welcome"]).pack(anchor="center", pady=(6, 0))
 
-5// Script 5 (Scrap Blue Badge) 
-   - Permet de récupèrer les utilisateurs possèdant le badge de certification
+    def show_scraping(self):
+        self.clear_content()
+        base = ttk.Frame(self.content_left); base.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
+        frm = ttk.Frame(base); frm.pack(expand=True)
+        lang = load_language(); t = translations.get(lang, translations["fr"])
+        ttk.Label(frm, text=t["submenu_1_title"], font=("Segoe UI", 14, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 8))
+        buttons = [
+            (t["option_1"], "Codes/Scripts/a.py"),
+            (t["option_2"], "Codes/Scripts/b.py"),
+            (t["option_3"], None),
+            (t["option_4"], "__OPEN_PANEL__"),
+            ("Start script : (Collect Profiles + emails + acc's info's)", "__RUN_C__"),
+            (t["option_v"], "Codes/Scripts/check_verified.py"),
+        ]
+        for i, (label, target) in enumerate(buttons, start=1):
+            def make_cmd(target=target):
+                if target == "__OPEN_PANEL__": return self.open_hashtag_panel
+                elif target == "__RUN_C__":     return self.run_c_with_desired
+                elif target is None:            return self.run_Scripts_automatic
+                else:                           return lambda: self.run_script(target)
+            ttk.Button(frm, text=label, command=make_cmd()).grid(row=i, column=0, sticky="w", pady=4)
+        ttk.Button(frm, text=translations[load_language()]["return_menu"], command=self.show_home).grid(row=len(buttons)+1, column=0, pady=(12,0), sticky="w")
 
-6// Script (Tiktok info)
-   - Récupère le fichier profiles_with_email.txt et ouvre le fichier
-   - Vérifie le fichier et donne les informations publique de l'api tiktok de tout les @ présent dans le fichier et les renvoie dans info_accs.txt
+    def show_tiktok(self):
+        self.clear_content()
+        base = ttk.Frame(self.content_left); base.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
+        frm = ttk.Frame(base); frm.pack(expand=True)
+        lang = load_language(); t = translations.get(lang, translations["fr"])
+        ttk.Label(frm, text=t["submenu_2_title"], font=("Segoe UI", 14, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 8))
+        ttk.Button(frm, text=t["option_t"], command=self.show_tuto).grid(row=1, column=0, sticky="w", pady=4)
+        ttk.Button(frm, text=translations[load_language()]["btn_send_telegram"], command=lambda: self.run_script("Codes/second_script/telegram_sender.py")).grid(row=2, column=0, sticky="w", pady=4)
+        ttk.Button(frm, text=translations[load_language()]["btn_infinite_report"], command=lambda: self.run_script("Codes/second_script/tiktok_info.py")).grid(row=3, column=0, sticky="w", pady=4)
+        ttk.Button(frm, text=t["option_cc"], command=lambda: self.run_script("Codes/second_script/cleaner.py")).grid(row=4, column=0, sticky="w", pady=4)
+        ttk.Button(frm, text=translations[load_language()]["btn_convert_cookies"], command=lambda: self.run_script("Codes/second_script/cc.py")).grid(row=5, column=0, sticky="w", pady=4)
+        ttk.Button(frm, text=t["return_menu"], command=self.show_home).grid(row=6, column=0, pady=(12,0), sticky="w")
 
-7// Script Nettoyage
-   - Permet simplement de clean les fichier txt
+    def show_settings(self):
+        self.clear_content()
+        outer = ttk.Frame(self.content_left); outer.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
+        frm = ttk.Frame(outer); frm.pack(expand=True, anchor="w")
+        lang = load_language(); t = translations.get(lang, translations["fr"])
+        ttk.Label(frm, text=t["submenu_3_title"], font=("Segoe UI", 14, "bold")).pack(anchor="w")
 
-8// Paramètres
-   - changer la langue du tool
-   - modifier le nombre de scroll sur les pages
-   - Changelog ici les mises a jours du tool son noté
-""")
-    input(Fore.YELLOW + "\nAppuyez sur Entrée pour revenir au menu..." + Style.RESET_ALL)
+        cfg = load_config()
 
-def changelog():
-    clear_console()
-    print_banner()
-    print(Fore.CYAN + "========================== Changelogs ==========================".center(140) + Style.RESET_ALL)
-    changelog_lines = [
-        "",
-        "Changelogs :",
-        "2.1 : Ajout d'un new script qui permet de choisir le nombre de compte voulu par exemple si vous mettez 154 il recupera 154 comptes et passe a l'étape suivante"
-        "2.0 : Corrections des fautes, améliorations de la vitesse pour signaler un @, amélioration de la vitesse pour recupérer les bio Changement de textes pour les titres pour etre plus clair sur la fonction,"
-        " modification du script 3 qui permet de faire marcher le 1 et 2 en meme temps plus besoin d'appuyer sur entrer pour commener la seconde étape",
-        "1.9 : Ajout de Telegram file sender",
-        "1.8 : Ajout de [cc] pour clean les fichiers, ajout de [v] permet de scrap les comptes certif, et modification du système de sauvegarde des fichiers les anciennes lignes ne sont plus supprimé",
-        "1.7 : Ajout du script permettant la création de scraper hashtag custom",
-        "1.6 : Ajout du script scraper hashtag",
-        "1.5 : Scripts rework, Dynamic UI ASCII",
-        "1.4 : UI Update, Files directory Update",
-        "1.3 : Ajout du script complet + TikTok info",
-        "1.2 : Choix de la langue",
-        "1.1 : Ajout des paramètres",
-        "1.0 : Version initiale"
-    ]
-    for line in changelog_lines:
-        print(line.center(140))
-    input(Fore.YELLOW + "\nAppuyez sur Entrée pour revenir au menu...".center(100) + Style.RESET_ALL)
+        row1 = ttk.Frame(frm); row1.pack(anchor="w", pady=8)
+        ttk.Label(row1, text=t["option_s"]).pack(side=tk.LEFT)
+        scroll_var = tk.IntVar(value=int(cfg.get("scrolls", 10)))
+        ttk.Spinbox(row1, from_=1, to=10000, width=8, textvariable=scroll_var).pack(side=tk.LEFT, padx=8)
+        ttk.Button(row1, text=translations[load_language()]["btn_save"], command=lambda: self._save_scrolls(scroll_var.get())).pack(side=tk.LEFT)
 
-def launch_foryou_panel():
-    clear_console()
-    print_banner()
-    lang = load_language()
-    t = translations[lang]
+        row2 = ttk.Frame(frm); row2.pack(anchor="w", pady=8)
+        ttk.Label(row2, text=t["option_c"]).pack(side=tk.LEFT)
+        lang_var = tk.StringVar(value=lang)
+        for code, label in [("fr", "Français"), ("en", "English")]:
+            ttk.Radiobutton(row2, text=label, value=code, variable=lang_var, command=lambda lv=lang_var: self._change_lang(lv.get())).pack(side=tk.LEFT, padx=6)
 
-    header = f"========== {t['panel_header']} =========="
-    print(Fore.CYAN + header.center(140) + Style.RESET_ALL)
-    print()
+        row3 = ttk.Frame(frm); row3.pack(anchor="w", pady=8)
+        ttk.Label(row3, text=t["option_theme"]).pack(side=tk.LEFT)
+        theme_map = {t["theme_system"]: "system", t["theme_light"]: "light", t["theme_dark"]: "dark"}
+        inv_theme_map = {v: k for k, v in theme_map.items()}
+        theme_var = tk.StringVar(value=inv_theme_map.get(cfg.get("theme","dark"), t["theme_dark"]))
+        ttk.Combobox(row3, textvariable=theme_var, values=list(theme_map.keys()), width=12, state="readonly").pack(side=tk.LEFT, padx=8)
+        ttk.Button(row3, text=translations[load_language()]["btn_save"], command=lambda: self._save_theme(theme_map.get(theme_var.get(),"dark"))).pack(side=tk.LEFT)
 
-    options = [
-        "[1] #fyp",
-        "[2] #trend",
-        "[3] #foryou",
-        "[4] #famous",
-        "[5] #love",
-        "[6] #mood",
-        "[7] #pourtoi",
-        f"[create] {t['option_create']}",
-        f"[Q] {t['return_menu']}"
-    ]
+        row4 = ttk.Frame(frm); row4.pack(anchor="w", pady=8)
+        ttk.Label(row4, text=t["option_color"]).pack(side=tk.LEFT)
+        color_labels = [t["color_sky"], t["color_blue"], t["color_red"], t["color_yellow"], t["color_green"]]
+        color_map = {
+            t["color_sky"]: "sky",
+            t["color_blue"]: "blue",
+            t["color_red"]: "red",
+            t["color_yellow"]: "yellow",
+            t["color_green"]: "green",
+        }
+        inv_color_map = {v: k for k, v in color_map.items()}
+        color_var = tk.StringVar(value=inv_color_map.get(cfg.get("color_theme","sky"), t["color_sky"]))
+        ttk.Combobox(row4, textvariable=color_var, values=color_labels, width=16, state="readonly").pack(side=tk.LEFT, padx=8)
+        ttk.Button(row4, text=translations[load_language()]["btn_save"], command=lambda: self._save_color_theme(color_map[color_var.get()])).pack(side=tk.LEFT)
 
-    longest = max(len(line) for line in options)
-    margin = (140 - longest) // 2
+        row5 = ttk.Frame(frm); row5.pack(anchor="w", pady=8)
+        ttk.Label(row5, text=t["option_logo"]).pack(side=tk.LEFT)
+        pngs = list_settings_pngs()
+        logo_var = tk.StringVar(value=cfg.get("logo_png", ""))
+        ttk.Combobox(row5, textvariable=logo_var, values=pngs, state="readonly", width=28).pack(side=tk.LEFT, padx=8)
+        ttk.Button(row5, text=translations[load_language()]["btn_save"], command=lambda: self._save_logo_png(logo_var.get())).pack(side=tk.LEFT)
 
-    for line in options:
-        print(" " * margin + line)
+        ttk.Button(frm, text=t["option_l"], command=self.show_changelog).pack(anchor="w", pady=(10,0))
 
-    print()
-    choice = input(t["scraper_prompt"].rjust(70)).strip().lower()
+    def show_changelog(self):
+        self.clear_content()
+        frm = ttk.Frame(self.content_left); frm.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
+        ttk.Label(frm, text="Changelogs", font=("Segoe UI", 14, "bold")).pack(anchor="w")
+        txt = tk.Text(frm, height=18, wrap="word"); txt.pack(fill=tk.BOTH, expand=True)
+        txt.insert("1.0", "\n".join([
+            "", "Changelogs :", "2.3 : Couleurs d’interface (Bleu ciel, Bleu foncé, Rouge, Jaune, Vert).",
+            "2.2 : Sélecteur thème console (clair/sombre).", "2.1 : Script nombre de comptes voulu.",
+            "2.0 : Corrections et optimisations.", "1.9 : Telegram file sender.",
+            "1.8 : Cleaner + comptes certif.", "1.7 : Scraper hashtag custom.",
+            "1.6 : Scraper hashtag.", "1.5 : Rework Codes/Scripts.",
+            "1.4 : UI Update.", "1.3 : Scripts chainés + TikTok info.",
+            "1.2 : Choix de la langue.", "1.1 : Paramètres.", "1.0 : Initial."
+        ]))
+        txt.configure(state=tk.DISABLED)
 
-    scripts = {
-        '1': "Scripts/fyp.py",
-        '2': "Scripts/trend.py",
-        '3': "Scripts/foryou.py",
-        '4': "Scripts/famous.py",
-        '5': "Scripts/love.py",
-        '6': "Scripts/mood.py",
-        '7': "Scripts/pourtoi.py",
-        'create': "Scripts/createscraper.py"
-    }
+    def show_tuto(self):
+        top = tk.Toplevel(self); top.title(translations[load_language()]["tuto_title"]); top.geometry("700x600")
+        msg = ("=== Tuto Tiktok Scrapper + checker ===\n\n"
+               "1/ Collecte de profils → tiktok_profiles.txt\n"
+               "2/ Filtrage emails dans la bio → profiles_with_email.txt\n"
+               "3/ Mode complet : enchaîne 1 puis 2\n"
+               "4/ Hashtag scraper (#foryou, #trend, ...)\n"
+               "5/ Comptes certifiés\n"
+               "6/ Infos publiques API\n"
+               "7/ Nettoyage fichiers .txt\n"
+               "8/ Paramètres : langue, scroll, thème, couleur, logo\n")
+        t = tk.Text(top, wrap="word"); t.pack(fill=tk.BOTH, expand=True); t.insert("1.0", msg); t.configure(state=tk.DISABLED)
 
-    if choice in scripts:
-        run_script(scripts[choice])
-    elif choice == 'q':
-        return
-    else:
-        print(t.get("invalid_option", t.get("invalid", "Option invalide.")).center(140))
-        input(f"{t['return_menu']}...".center(140))
+    def run_script(self, script_path: str):
+        if not Path(script_path).exists():
+            messagebox.showerror(translations[load_language()]["not_found_title"], translations[load_language()]["not_found_text"].format(path=script_path))
+            return
+        ProcessRunner(self.console_append).run([sys.executable, script_path])
 
-def main():
-    check_and_force_update()
+    def run_Scripts_automatic(self):
+        seq = ["Codes/Scripts/a.py", "Codes/Scripts/b.py"]
+        def run_next(i=0):
+            if i >= len(seq): return
+            path = seq[i]
+            if not Path(path).exists():
+                self.console_append(f"Introuvable: {path}")
+                run_next(i+1); return
+            runner = ProcessRunner(self.console_append)
+            runner.run([sys.executable, path])
+            def waiter():
+                while runner.proc and runner.proc.poll() is None:
+                    time.sleep(0.2)
+                run_next(i+1)
+            threading.Thread(target=waiter, daemon=True).start()
+        run_next(0)
 
-    while True:
-        lang = load_language()
-        t = translations[lang]
-        menu()
-        choice = input(t["choose"]).strip().lower()
-        if choice == '1':
-            while True:
-                scraps_tools_menu()
-                c = input(translations[lang]["choose_submenu_option"]).strip().lower()
-                if c == '1':
-                    run_script("Scripts/a.py")
-                elif c == '2':
-                    run_script("Scripts/b.py")
-                elif c == '3':
-                    run_scripts_automatic()
-                elif c == '4':
-                    launch_foryou_panel()
-                elif c == '5':
-                    run_script("Scripts/c.py")
-                elif c == 'v':
-                    run_script("Scripts/check_verified.py")
-                elif c == 'b':
-                    break
-                else:
-                    print(Fore.RED + t["invalid"] + Style.RESET_ALL)
-                    input("Appuyez sur Entrée pour continuer...")
-        elif choice == '2':
-            while True:
-                second_scripts_menu()
-                c = input(translations[lang]["choose_submenu_option"]).strip().lower()
-                if c == 't':
-                    tuto()
-                elif c == 'tl':
-                    run_script("second_script/telegram_sender.py")
-                elif c == 'r':
-                    run_script("second_script/tiktok_info.py")
-                elif c == 'cc':
-                    run_script("second_script/cleaner.py")
-                elif c == 'ck':
-                    run_script("second_script/cc.py")
-                elif c == 'b':
-                    break
-                else:
-                    print(Fore.RED + t["invalid"] + Style.RESET_ALL)
-                    input("Appuyez sur Entrée pour continuer...")
-        elif choice == '3':
-            while True:
-                settings_menu()
-                c = input(translations[lang]["choose_submenu_option"]).strip().lower()
-                if c == 's':
-                    settings()
-                elif c == 'c':
-                    choose_language()
-                elif c == 'l':
-                    changelog()
-                elif c == 'q':
-                    print(Fore.MAGENTA + t["bye"] + Style.RESET_ALL)
-                    sys.exit(0)
-                elif c == 't':
-                    tuto()
-                elif c == 'b':
-                    break
-                else:
-                    print(Fore.RED + t["invalid"] + Style.RESET_ALL)
-                    input("Appuyez sur Entrée pour continuer...")
-        elif choice == 'q':
-            print(Fore.MAGENTA + t["bye"] + Style.RESET_ALL)
-            break
-        else:
-            print(Fore.RED + t["invalid"] + Style.RESET_ALL)
-            input("Appuyez sur Entrée pour continuer...")
+    def run_c_with_desired(self):
+        try:
+            desired = simpledialog.askinteger(
+                translations[load_language()]["ask_custom_scraper_title"],
+                translations[load_language()]["ask_custom_scraper_body"],
+                minvalue=1, initialvalue=150, parent=self)
+        except Exception:
+            desired = None
+        if desired is None: return
+        script_path = "Codes/Scripts/c.py"
+        if not Path(script_path).exists():
+            messagebox.showerror("Introuvable", f"Le script n'existe pas : {script_path}"); return
+        ProcessRunner(self.console_append).run([sys.executable, script_path, "--desired", str(desired)])
+
+    def open_hashtag_panel(self):
+        lang = load_language(); t = translations.get(lang, translations["fr"])
+        top = tk.Toplevel(self); top.title(t["panel_header"]); top.geometry("420x420")
+        scripts = {
+            '#fyp': "Codes/Scripts/fyp.py",
+            '#trend': "Codes/Scripts/trend.py",
+            '#foryou': "Codes/Scripts/foryou.py",
+            '#famous': "Codes/Scripts/famous.py",
+            '#love': "Codes/Scripts/love.py",
+            '#mood': "Codes/Scripts/mood.py",
+            '#pourtoi': "Codes/Scripts/pourtoi.py",
+            translations[load_language()]["panel_create_personal"]: "Codes/Scripts/createscraper.py",
+        }
+        for tag, path in scripts.items():
+            ttk.Button(top, text=tag, command=(lambda p=path: self.run_script(p))).pack(fill=tk.X, padx=12, pady=6)
+
+    def _save_scrolls(self, value: int):
+        cfg = load_config(); cfg["scrolls"] = int(value); save_config(cfg)
+        messagebox.showinfo(translations[load_language()]["ok_title"], translations[load_language()]["saved_param"])
+
+    def _change_lang(self, lang_code: str):
+        save_language(lang_code)
+        messagebox.showinfo(translations[load_language()]["lang_title"], translations[load_language()]["lang_changed"])
+
+    def _save_logo_png(self, filename: str):
+        cfg = load_config()
+        if filename: cfg["logo_png"] = filename
+        else: cfg.pop("logo_png", None)
+        save_config(cfg)
+        messagebox.showinfo(translations[load_language()]["ok_title"], translations[load_language()]["logo_saved"])
+        try: self.refresh_logo()
+        except Exception: pass
+
+    def _save_theme(self, pref: str):
+        self.apply_theme(pref)
+        messagebox.showinfo(translations[load_language()]["ok_title"], translations[load_language()]["theme_saved"])
+
+    def _save_color_theme(self, name: str):
+        self.apply_color_theme(name)
+        messagebox.showinfo(translations[load_language()]["ok_title"], translations[load_language()]["color_saved"])
 
 if __name__ == "__main__":
-    main()
-
+    app = App()
+    app.mainloop()

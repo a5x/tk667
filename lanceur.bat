@@ -1,4 +1,6 @@
 @echo off
-cd /d "%~dp0"
+title 667 SCRAPER Launcher
 python main.py
-pause
+echo.
+echo Le programme s'est terminé. Appuyez sur une touche pour fermer.
+pause >nul

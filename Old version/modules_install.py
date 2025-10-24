@@ -18,4 +18,4 @@ for pkg in required_packages:
     except Exception as e:
         print(f"Erreur lors de l'installation de {pkg} : {e}")
 
-print("OK Installation terminée.")
+print("✅ Installation terminée.")
