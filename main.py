@@ -8,6 +8,7 @@ import threading
 import subprocess
 import time
 from pathlib import Path
+import tempfile
 
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
@@ -20,11 +21,12 @@ except Exception:
 APP_TITLE = "667 SCRAPER"
 APP_MIN_SIZE = (1024, 640)
 
-LOCAL_VERSION = "2.4"
+LOCAL_VERSION = "2.3"
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
 VERSION_URL = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/main/version.txt"
+ZIP_URL = f"https://codeload.github.com/{GITHUB_OWNER}/{GITHUB_REPO}/zip/refs/heads/{GITHUB_BRANCH}"
 
 PRESERVE_PATHS = [
     "Settings/lang_config.json",
@@ -92,7 +94,17 @@ translations = {
         "color_red": "Rouge",
         "color_yellow": "Jaune",
         "color_green": "Vert",
-        "color_saved": "Couleur appliquée."
+        "color_saved": "Couleur appliquée.",
+        "update_title": "Mise à jour disponible",
+        "update_text": "Version {latest} disponible (actuelle {current}).\n\nClique sur « Télécharger et installer » pour mettre à jour l’application.",
+        "btn_update_now": "Télécharger et installer",
+        "status_checking": "Vérification…",
+        "status_downloading": "Téléchargement… {pct}%",
+        "status_extracting": "Extraction…",
+        "status_applying": "Application de la mise à jour…",
+        "status_done": "Mise à jour terminée.",
+        "restart_prompt": "Mise à jour installée. Redémarrer maintenant ?",
+        "error_update": "Échec de mise à jour : {err}",
     },
     "en": {
         "menu_title": "========= New Release 2.1 =========",
@@ -153,7 +165,17 @@ translations = {
         "color_red": "Red",
         "color_yellow": "Yellow",
         "color_green": "Green",
-        "color_saved": "Color applied."
+        "color_saved": "Color applied.",
+        "update_title": "Update available",
+        "update_text": "Version {latest} available (current {current}).\n\nClick “Download & install” to update.",
+        "btn_update_now": "Download & install",
+        "status_checking": "Checking…",
+        "status_downloading": "Downloading… {pct}%",
+        "status_extracting": "Extracting…",
+        "status_applying": "Applying update…",
+        "status_done": "Update complete.",
+        "restart_prompt": "Update installed. Restart now?",
+        "error_update": "Update failed: {err}",
     }
 }
 
@@ -205,9 +227,26 @@ def _parse_version(v: str):
     except Exception:
         return tuple(v.strip().split("."))
 
+def _is_newer(latest: str, current: str) -> bool:
+    return _parse_version(latest) > _parse_version(current)
+
+def _path_is_preserved(rel_path: str) -> bool:
+    rel = rel_path.replace("\\", "/")
+    for p in PRESERVE_PATHS:
+        p = p.rstrip("/")
+        if p == "":
+            continue
+        if not p.endswith("/") and rel == p:
+            return True
+        if p.endswith("/") and (rel == p[:-1] or rel.startswith(p)):
+            return True
+    return False
+
 def check_update_gui(root: tk.Tk, console_append):
     if not requests:
         return
+    lang = load_language(); t = translations.get(lang, translations["fr"])
+
     def task():
         try:
             console_append(f"Checking update version : {VERSION_URL}\n")
@@ -218,9 +257,112 @@ def check_update_gui(root: tk.Tk, console_append):
                 return
             latest = r.text.strip()
             console_append(f"Last Released Update : {latest} | Your Update Version : {LOCAL_VERSION}\n")
+            if _is_newer(latest, LOCAL_VERSION):
+                root.after(0, lambda: _show_update_modal(root, latest, console_append))
         except Exception as e:
             console_append(f"Update checking failed : {e}\n")
     threading.Thread(target=task, daemon=True).start()
+
+def _show_update_modal(root: tk.Tk, latest: str, console_append):
+    lang = load_language(); t = translations.get(lang, translations["fr"])
+    win = tk.Toplevel(root)
+    win.title(t["update_title"])
+    win.geometry("460x220")
+    win.transient(root)
+    win.grab_set()
+    frm = ttk.Frame(win, padding=16); frm.pack(fill=tk.BOTH, expand=True)
+
+    msg = t["update_text"].format(latest=latest, current=LOCAL_VERSION)
+    ttk.Label(frm, text=msg, justify="left", wraplength=420).pack(anchor="w")
+
+    prog = ttk.Progressbar(frm, orient="horizontal", mode="determinate", maximum=100, length=420)
+    prog.pack(pady=(12, 6))
+    status_var = tk.StringVar(value=t["status_checking"])
+    ttk.Label(frm, textvariable=status_var).pack(anchor="w")
+
+    btn = ttk.Button(frm, text=t["btn_update_now"],
+                     command=lambda: _start_update_thread(win, prog, status_var, latest, console_append))
+    btn.pack(pady=(10, 0))
+
+
+def _start_update_thread(win: tk.Toplevel, prog: ttk.Progressbar, status_var: tk.StringVar,
+                         latest: str, console_append):
+    threading.Thread(
+        target=_perform_update,
+        args=(win, prog, status_var, latest, console_append),
+        daemon=True
+    ).start()
+
+def _perform_update(win: tk.Toplevel, prog: ttk.Progressbar, status_var: tk.StringVar,
+                    latest: str, console_append):
+    lang = load_language(); t = translations.get(lang, translations["fr"])
+    base_dir = Path.cwd()
+
+    try:
+        status_var.set(t["status_downloading"].format(pct=0))
+        prog["value"] = 0
+        with requests.get(ZIP_URL, stream=True, timeout=20) as r:
+            r.raise_for_status()
+            total = int(r.headers.get("Content-Length", 0)) or None
+            tmp_zip = Path(tempfile.gettempdir()) / f"{GITHUB_REPO}-{GITHUB_BRANCH}.zip"
+            with open(tmp_zip, "wb") as f:
+                downloaded = 0
+                for chunk in r.iter_content(chunk_size=1024 * 64):
+                    if chunk:
+                        f.write(chunk)
+                        if total:
+                            downloaded += len(chunk)
+                            pct = int(downloaded * 100 / total)
+                            prog["value"] = pct
+                            status_var.set(t["status_downloading"].format(pct=pct))
+        console_append(f"\nZIP downloaded to: {tmp_zip}\n")
+    except Exception as e:
+        messagebox.showerror(translations[load_language()]["update_title"], t["error_update"].format(err=str(e)))
+        return
+
+    try:
+        status_var.set(t["status_extracting"])
+        prog["value"] = 0
+        extract_dir = Path(tempfile.mkdtemp(prefix="update_"))
+        with zipfile.ZipFile(tmp_zip, "r") as z:
+            z.extractall(extract_dir)
+        src_root = next(extract_dir.iterdir())
+        console_append(f"Extracted to: {src_root}\n")
+    except Exception as e:
+        messagebox.showerror(translations[load_language()]["update_title"], t["error_update"].format(err=str(e)))
+        return
+
+    try:
+        status_var.set(t["status_applying"])
+        to_copy = []
+        for p in src_root.rglob("*"):
+            if p.is_dir():
+                continue
+            rel = str(p.relative_to(src_root)).replace("\\", "/")
+            if _path_is_preserved(rel):
+                continue
+            to_copy.append((p, base_dir / rel))
+
+        total = len(to_copy) or 1
+        for i, (src, dst) in enumerate(to_copy, 1):
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            pct = int(i * 100 / total)
+            prog["value"] = pct
+
+        status_var.set(t["status_done"])
+    except Exception as e:
+        messagebox.showerror(translations[load_language()]["update_title"], t["error_update"].format(err=str(e)))
+        return
+
+    try:
+        if messagebox.askyesno(APP_TITLE, t["restart_prompt"]):
+            python = sys.executable
+            os.execl(python, python, *sys.argv)
+        else:
+            win.destroy()
+    except Exception:
+        win.destroy()
 
 class ProcessRunner:
     def __init__(self, console_append):
@@ -317,6 +459,7 @@ class App(tk.Tk):
         self.apply_color_theme(self.current_color)
 
         self.show_home()
+        # Vérification auto au démarrage ⇒ affichera le popup s'il y a mieux
         self.after(800, lambda: check_update_gui(self, self.console_append))
 
     def is_dark(self) -> bool:
