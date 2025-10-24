@@ -1,4 +1,3 @@
-
 import os
 import sys
 import json
@@ -98,7 +97,7 @@ translations = {
         "color_green": "Vert",
         "color_saved": "Couleur appliquée.",
         "update_title": "Mise à jour disponible",
-        "update_text": "Version {latest} disponible (actuelle {current}).\\n\\nClique sur « Télécharger et installer » pour mettre à jour l’application.",
+        "update_text": "Version {latest} disponible (actuelle {current}).\n\nClique sur « Télécharger et installer » pour mettre à jour l’application.",
         "btn_update_now": "Télécharger et installer",
         "status_checking": "Vérification…",
         "status_downloading": "Téléchargement… {pct}%",
@@ -188,9 +187,6 @@ SETTINGS_DIR.mkdir(exist_ok=True)
 LANG_FILE = SETTINGS_DIR / "lang_config.json"
 CONFIG_FILE = SETTINGS_DIR / "config.json"
 
-BG_DIR = SETTINGS_DIR / "bg"
-BG_DIR.mkdir(parents=True, exist_ok=True)
-
 def load_language() -> str:
     if LANG_FILE.exists():
         try:
@@ -228,25 +224,6 @@ def get_logo_path_from_config(cfg=None):
     p = SETTINGS_DIR / logo
     return str(p) if p.exists() else None
 
-def list_bg_images():
-    try:
-        imgs = []
-        for ext in ("*.png", "*.jpg", "*.jpeg", "*.gif"):
-            imgs += [p.name for p in BG_DIR.glob(ext)]
-        return sorted(imgs)
-    except Exception:
-        return []
-
-def get_bg_path_from_config(cfg=None):
-    if cfg is None:
-        cfg = load_config()
-    bg = cfg.get("bg_image")
-    if not bg:
-        return None
-    p = BG_DIR / bg
-    return str(p) if p.exists() else None
-
-
 def _parse_version(v: str):
     try:
         return tuple(int(x) for x in v.strip().split("."))
@@ -279,7 +256,6 @@ def _ensure_writable(path: Path):
         pass
 
 def _atomic_copy(src: Path, dst: Path):
-    """Copy src to dst atomically, with os.replace to ensure overwrite even on Windows."""
     dst.parent.mkdir(parents=True, exist_ok=True)
     _ensure_writable(dst)
     with open(src, "rb") as fsrc:
@@ -392,7 +368,7 @@ def _perform_update(win: tk.Toplevel, prog: ttk.Progressbar, status_var: tk.Stri
                             pct = int(downloaded * 100 / total)
                             prog["value"] = pct
                             status_var.set(t["status_downloading"].format(pct=pct))
-        console_append(f"\\nZIP downloaded to: {tmp_zip}\\n")
+        console_append(f"\nZIP downloaded to: {tmp_zip}\n")
     except Exception as e:
         messagebox.showerror(translations[load_language()]["update_title"], t["error_update"].format(err=str(e)))
         return
@@ -404,7 +380,7 @@ def _perform_update(win: tk.Toplevel, prog: ttk.Progressbar, status_var: tk.Stri
         with zipfile.ZipFile(tmp_zip, "r") as z:
             z.extractall(extract_dir)
         src_root = next(extract_dir.iterdir())
-        console_append(f"Extracted to: {src_root}\\n")
+        console_append(f"Extracted to: {src_root}\n")
     except Exception as e:
         messagebox.showerror(translations[load_language()]["update_title"], t["error_update"].format(err=str(e)))
         return
@@ -434,7 +410,7 @@ def _perform_update(win: tk.Toplevel, prog: ttk.Progressbar, status_var: tk.Stri
                         dst.unlink()
                     _atomic_copy(src, dst)
                 except Exception as e:
-                    console_append(f"[WARN] Could not replace {rel}: {e}\\n")
+                    console_append(f"[WARN] Could not replace {rel}: {e}\n")
                     raise
             pct = int(i * 100 / total)
             prog["value"] = pct
@@ -474,16 +450,16 @@ class ProcessRunner:
     def run(self, cmd, cwd=None):
         with self.lock:
             if self.proc and self.proc.poll() is None:
-                self.console_append("Un script est déjà en cours.\\n")
+                self.console_append("Un script est déjà en cours.\n")
                 return
             try:
-                self.console_append(f"\\n$ {' '.join(cmd)}\\n")
+                self.console_append(f"\n$ {' '.join(cmd)}\n")
                 self.proc = subprocess.Popen(
                     cmd, cwd=cwd, stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT, text=True, bufsize=1
                 )
             except FileNotFoundError:
-                self.console_append("Python ou le script est introuvable.\\n")
+                self.console_append("Python ou le script est introuvable.\n")
                 return
         def reader():
             try:
@@ -491,7 +467,7 @@ class ProcessRunner:
                     self.console_append(line)
             finally:
                 rc = self.proc.poll()
-                self.console_append(f"\\n[Process terminé] Code: {rc}\\n")
+                self.console_append(f"\n[Process terminé] Code: {rc}\n")
         threading.Thread(target=reader, daemon=True).start()
 
 class App(tk.Tk):
@@ -500,12 +476,6 @@ class App(tk.Tk):
         self.title(APP_TITLE)
         self.minsize(*APP_MIN_SIZE)
         self.geometry("1100x700")
-        # Background image label (placed behind everything)
-        self._bg_img_ref = None
-        self.bg_label = tk.Label(self)
-        self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-        self.bg_label.lower()  # move behind all widgets
-
 
         self.style = ttk.Style(self)
         try:
@@ -521,7 +491,29 @@ class App(tk.Tk):
 
         top = ttk.Frame(self)
         top.pack(side=tk.TOP, fill=tk.X)
-        ttk.Label(top, text=APP_TITLE, font=("Segoe UI", 14, "bold")).pack(side=tk.LEFT, padx=10, pady=6)
+
+        from tkinter import PhotoImage
+        self._logo_small_ref = None
+        self.logo_label = None
+        logo_path = get_logo_path_from_config()
+        if logo_path:
+            try:
+                img = PhotoImage(file=logo_path)
+                w, h = img.width(), img.height()
+                sx = max(1, int(w / 50)) if w > 50 else 1
+                sy = max(1, int(h / 50)) if h > 50 else 1
+                if sx > 1 or sy > 1:
+                    img = img.subsample(sx, sy)
+                self._logo_small_ref = img
+                self.logo_label = ttk.Label(top, image=self._logo_small_ref)
+                self.logo_label.pack(side=tk.LEFT, padx=10, pady=6)
+            except Exception:
+                self.logo_label = ttk.Label(top, text="667 SCRAPER", font=("Segoe UI", 14, "bold"))
+                self.logo_label.pack(side=tk.LEFT, padx=10, pady=6)
+        else:
+            self.logo_label = ttk.Label(top, text="667 SCRAPER", font=("Segoe UI", 14, "bold"))
+            self.logo_label.pack(side=tk.LEFT, padx=10, pady=6)
+
         ttk.Button(top, text=translations[load_language()]["btn_check_updates"],
                    command=lambda: check_update_gui(self, self.console_append)).pack(side=tk.RIGHT, padx=6)
 
@@ -536,16 +528,6 @@ class App(tk.Tk):
 
         self.content_left = ttk.Frame(self.content)
         self.content_left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        self.logo_panel = ttk.Frame(self.content, width=280)
-        self.logo_panel.pack(side=tk.RIGHT, fill=tk.Y)
-        self.logo_panel.pack_propagate(False)
-        self._logo_img = None
-        self.logo_label = ttk.Label(self.logo_panel)
-        self.logo_label.pack(anchor="ne", padx=8, pady=8)
-        ttk.Label(self.logo_panel, text="(Place PNGs in Settings/ and choose one in Settings)").pack(anchor="ne")
-        try: self.refresh_logo()
-        except Exception: pass
 
         console_frame = ttk.LabelFrame(self, text=translations[load_language()]["lbl_console"])
         console_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, padx=10, pady=8)
@@ -562,9 +544,6 @@ class App(tk.Tk):
         ttk.Button(nav, text=translations[load_language()]["nav_tiktok"], command=self.show_tiktok).pack(fill=tk.X, padx=6, pady=4)
         ttk.Button(nav, text=translations[load_language()]["nav_settings"], command=self.show_settings).pack(fill=tk.X, padx=6, pady=4)
         ttk.Button(nav, text=translations[load_language()]["nav_changelog"], command=self.show_changelog).pack(fill=tk.X, padx=6, pady=4)
-
-        self.refresh_bg()
-        self.bind("<Configure>", lambda e: self._schedule_bg_refresh())
 
         self.apply_theme(self.current_theme)
         self.apply_color_theme(self.current_color)
@@ -597,7 +576,7 @@ class App(tk.Tk):
             "blue":   {"accent": "#0B61A4", "accent_fg": "#ffffff", "bg": "#F3F5F8"},
             "red":    {"accent": "#D94343", "accent_fg": "#ffffff", "bg": "#F8F3F3"},
             "yellow": {"accent": "#E0B000", "accent_fg": "#111111", "bg": "#F8F6EE"},
-            "pink": {"accent": "#C671CE", "accent_fg": "#ffffff", "bg": "#F8F6EE"},
+            "pink":   {"accent": "#C671CE", "accent_fg": "#ffffff", "bg": "#F8F6EE"},
             "green":  {"accent": "#2E7D32", "accent_fg": "#ffffff", "bg": "#F1F7F2"},
         }
         if name not in palette:
@@ -653,11 +632,17 @@ class App(tk.Tk):
         from tkinter import PhotoImage
         self._logo_img = None
         logo_path = get_logo_path_from_config()
+        if not self.logo_label:
+            return
         try:
             self.logo_label.configure(image="", text="")
         except Exception:
             pass
         if not logo_path:
+            try:
+                self.logo_label.configure(text="667 SCRAPER")
+            except Exception:
+                pass
             return
         try:
             img = PhotoImage(file=logo_path)
@@ -668,71 +653,9 @@ class App(tk.Tk):
             if sx > 1 or sy > 1:
                 img = img.subsample(sx, sy)
             self._logo_img = img
-            self.logo_label.configure(image=self._logo_img)
+            self.logo_label.configure(image=self._logo_img, text="")
         except Exception:
             self.logo_label.configure(text=str(logo_path))
-    def _schedule_bg_refresh(self):
-        # Debounce rapid resize events
-        try:
-            if hasattr(self, "_bg_job") and self._bg_job:
-                self.after_cancel(self._bg_job)
-        except Exception:
-            pass
-        self._bg_job = self.after(100, self.refresh_bg)
-
-    def refresh_bg(self):
-        """Load and scale the background image from Settings/bg/ to window size."""
-        path = get_bg_path_from_config()
-        if not path:
-            # No background configured: clear
-            try:
-                self.bg_label.configure(image="")
-            except Exception:
-                pass
-            self._bg_img_ref = None
-            return
-        w = max(1, self.winfo_width())
-        h = max(1, self.winfo_height())
-        try:
-            from PIL import Image, ImageTk  # type: ignore
-            img = Image.open(path)
-            img = img.resize((w, h), Image.LANCZOS)
-            tkimg = ImageTk.PhotoImage(img)
-            self.bg_label.configure(image=tkimg)
-            self._bg_img_ref = tkimg
-        except Exception:
-            # Fallback to Tkinter PhotoImage (PNG/GIF only) without smooth scaling
-            try:
-                from tkinter import PhotoImage
-                base = PhotoImage(file=path)
-                # crude subsample/zoom to approximate size
-                bw, bh = base.width(), base.height()
-                if bw == 0 or bh == 0:
-                    self.bg_label.configure(image="")
-                    self._bg_img_ref = None
-                    return
-                sx = max(1, int(bw / max(1, w)))
-                sy = max(1, int(bh / max(1, h)))
-                img2 = base.subsample(sx, sy)
-                self.bg_label.configure(image=img2)
-                self._bg_img_ref = img2
-            except Exception:
-                self._bg_img_ref = None
-
-    def _save_bg_image(self, filename: str):
-        cfg = load_config()
-        if filename:
-            cfg["bg_image"] = filename
-        else:
-            cfg.pop("bg_image", None)
-        save_config(cfg)
-        messagebox.showinfo(translations[load_language()]["ok_title"], translations[load_language()]["bg_saved"])
-        try:
-            self.refresh_bg()
-        except Exception:
-            pass
-
-
 
     def clear_content(self):
         for w in self.content_left.winfo_children():
@@ -835,13 +758,6 @@ class App(tk.Tk):
         ttk.Combobox(row5, textvariable=logo_var, values=pngs, state="readonly", width=28).pack(side=tk.LEFT, padx=8)
         ttk.Button(row5, text=translations[load_language()]["btn_save"], command=lambda: self._save_logo_png(logo_var.get())).pack(side=tk.LEFT)
 
-        row6 = ttk.Frame(frm); row6.pack(anchor="w", pady=8)
-        ttk.Label(row6, text=t["option_bg"]).pack(side=tk.LEFT)
-        bgs = list_bg_images()
-        bg_var = tk.StringVar(value=cfg.get("bg_image", ""))
-        ttk.Combobox(row6, textvariable=bg_var, values=bgs, state="readonly", width=28).pack(side=tk.LEFT, padx=8)
-        ttk.Button(row6, text=translations[load_language()]["btn_save"], command=lambda: self._save_bg_image(bg_var.get())).pack(side=tk.LEFT)
-
         ttk.Button(frm, text=t["option_l"], command=self.show_changelog).pack(anchor="w", pady=(10,0))
 
     def show_changelog(self):
@@ -849,7 +765,7 @@ class App(tk.Tk):
         frm = ttk.Frame(self.content_left); frm.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
         ttk.Label(frm, text="Changelogs", font=("Segoe UI", 14, "bold")).pack(anchor="w")
         txt = tk.Text(frm, height=18, wrap="word"); txt.pack(fill=tk.BOTH, expand=True)
-        txt.insert("1.0", "\\n".join([
+        txt.insert("1.0", "\n".join([
             "", "Changelogs :", "2.4 : Fix updater (remplace main.py en premier, copie atomique, UI bloquée).",
             "2.3 : Couleurs d’interface (Bleu ciel, Bleu foncé, Rouge, Jaune, Vert).",
             "2.2 : Sélecteur thème console (clair/sombre).", "2.1 : Script nombre de comptes voulu.",
@@ -863,15 +779,15 @@ class App(tk.Tk):
 
     def show_tuto(self):
         top = tk.Toplevel(self); top.title(translations[load_language()]["tuto_title"]); top.geometry("700x600")
-        msg = ("=== Tuto Tiktok Scrapper + checker ===\\n\\n"
-               "1/ Collecte de profils → tiktok_profiles.txt\\n"
-               "2/ Filtrage emails dans la bio → profiles_with_email.txt\\n"
-               "3/ Mode complet : enchaîne 1 puis 2\\n"
-               "4/ Hashtag scraper (#foryou, #trend, ...)\\n"
-               "5/ Comptes certifiés\\n"
-               "6/ Infos publiques API\\n"
-               "7/ Nettoyage fichiers .txt\\n"
-               "8/ Paramètres : langue, scroll, thème, couleur, logo\\n")
+        msg = ("=== Tuto Tiktok Scrapper + checker ===\n\n"
+               "1/ Collecte de profils → tiktok_profiles.txt\n"
+               "2/ Filtrage emails dans la bio → profiles_with_email.txt\n"
+               "3/ Mode complet : enchaîne 1 puis 2\n"
+               "4/ Hashtag scraper (#foryou, #trend, ...)\n"
+               "5/ Comptes certifiés\n"
+               "6/ Infos publiques API\n"
+               "7/ Nettoyage fichiers .txt\n"
+               "8/ Paramètres : langue, scroll, thème, couleur, logo\n")
         t = tk.Text(top, wrap="word"); t.pack(fill=tk.BOTH, expand=True); t.insert("1.0", msg); t.configure(state=tk.DISABLED)
 
     def run_script(self, script_path: str):
@@ -955,6 +871,3 @@ class App(tk.Tk):
 if __name__ == "__main__":
     app = App()
     app.mainloop()
-
-
-
