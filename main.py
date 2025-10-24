@@ -23,7 +23,7 @@ except Exception:
 APP_TITLE = "667 SCRAPER"
 APP_MIN_SIZE = (1024, 640)
 
-LOCAL_VERSION = "2.4"
+LOCAL_VERSION = "2.3"
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
@@ -188,6 +188,9 @@ SETTINGS_DIR.mkdir(exist_ok=True)
 LANG_FILE = SETTINGS_DIR / "lang_config.json"
 CONFIG_FILE = SETTINGS_DIR / "config.json"
 
+BG_DIR = SETTINGS_DIR / "bg"
+BG_DIR.mkdir(parents=True, exist_ok=True)
+
 def load_language() -> str:
     if LANG_FILE.exists():
         try:
@@ -224,6 +227,25 @@ def get_logo_path_from_config(cfg=None):
         return None
     p = SETTINGS_DIR / logo
     return str(p) if p.exists() else None
+
+def list_bg_images():
+    try:
+        imgs = []
+        for ext in ("*.png", "*.jpg", "*.jpeg", "*.gif"):
+            imgs += [p.name for p in BG_DIR.glob(ext)]
+        return sorted(imgs)
+    except Exception:
+        return []
+
+def get_bg_path_from_config(cfg=None):
+    if cfg is None:
+        cfg = load_config()
+    bg = cfg.get("bg_image")
+    if not bg:
+        return None
+    p = BG_DIR / bg
+    return str(p) if p.exists() else None
+
 
 def _parse_version(v: str):
     try:
@@ -478,6 +500,12 @@ class App(tk.Tk):
         self.title(APP_TITLE)
         self.minsize(*APP_MIN_SIZE)
         self.geometry("1100x700")
+        # Background image label (placed behind everything)
+        self._bg_img_ref = None
+        self.bg_label = tk.Label(self)
+        self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        self.bg_label.lower()  # move behind all widgets
+
 
         self.style = ttk.Style(self)
         try:
@@ -535,6 +563,9 @@ class App(tk.Tk):
         ttk.Button(nav, text=translations[load_language()]["nav_settings"], command=self.show_settings).pack(fill=tk.X, padx=6, pady=4)
         ttk.Button(nav, text=translations[load_language()]["nav_changelog"], command=self.show_changelog).pack(fill=tk.X, padx=6, pady=4)
 
+        self.refresh_bg()
+        self.bind("<Configure>", lambda e: self._schedule_bg_refresh())
+
         self.apply_theme(self.current_theme)
         self.apply_color_theme(self.current_color)
 
@@ -566,6 +597,7 @@ class App(tk.Tk):
             "blue":   {"accent": "#0B61A4", "accent_fg": "#ffffff", "bg": "#F3F5F8"},
             "red":    {"accent": "#D94343", "accent_fg": "#ffffff", "bg": "#F8F3F3"},
             "yellow": {"accent": "#E0B000", "accent_fg": "#111111", "bg": "#F8F6EE"},
+            "pink": {"accent": "#C671CE", "accent_fg": "#ffffff", "bg": "#F8F6EE"},
             "green":  {"accent": "#2E7D32", "accent_fg": "#ffffff", "bg": "#F1F7F2"},
         }
         if name not in palette:
@@ -639,6 +671,68 @@ class App(tk.Tk):
             self.logo_label.configure(image=self._logo_img)
         except Exception:
             self.logo_label.configure(text=str(logo_path))
+    def _schedule_bg_refresh(self):
+        # Debounce rapid resize events
+        try:
+            if hasattr(self, "_bg_job") and self._bg_job:
+                self.after_cancel(self._bg_job)
+        except Exception:
+            pass
+        self._bg_job = self.after(100, self.refresh_bg)
+
+    def refresh_bg(self):
+        """Load and scale the background image from Settings/bg/ to window size."""
+        path = get_bg_path_from_config()
+        if not path:
+            # No background configured: clear
+            try:
+                self.bg_label.configure(image="")
+            except Exception:
+                pass
+            self._bg_img_ref = None
+            return
+        w = max(1, self.winfo_width())
+        h = max(1, self.winfo_height())
+        try:
+            from PIL import Image, ImageTk  # type: ignore
+            img = Image.open(path)
+            img = img.resize((w, h), Image.LANCZOS)
+            tkimg = ImageTk.PhotoImage(img)
+            self.bg_label.configure(image=tkimg)
+            self._bg_img_ref = tkimg
+        except Exception:
+            # Fallback to Tkinter PhotoImage (PNG/GIF only) without smooth scaling
+            try:
+                from tkinter import PhotoImage
+                base = PhotoImage(file=path)
+                # crude subsample/zoom to approximate size
+                bw, bh = base.width(), base.height()
+                if bw == 0 or bh == 0:
+                    self.bg_label.configure(image="")
+                    self._bg_img_ref = None
+                    return
+                sx = max(1, int(bw / max(1, w)))
+                sy = max(1, int(bh / max(1, h)))
+                img2 = base.subsample(sx, sy)
+                self.bg_label.configure(image=img2)
+                self._bg_img_ref = img2
+            except Exception:
+                self._bg_img_ref = None
+
+    def _save_bg_image(self, filename: str):
+        cfg = load_config()
+        if filename:
+            cfg["bg_image"] = filename
+        else:
+            cfg.pop("bg_image", None)
+        save_config(cfg)
+        messagebox.showinfo(translations[load_language()]["ok_title"], translations[load_language()]["bg_saved"])
+        try:
+            self.refresh_bg()
+        except Exception:
+            pass
+
+
 
     def clear_content(self):
         for w in self.content_left.winfo_children():
@@ -740,6 +834,13 @@ class App(tk.Tk):
         logo_var = tk.StringVar(value=cfg.get("logo_png", ""))
         ttk.Combobox(row5, textvariable=logo_var, values=pngs, state="readonly", width=28).pack(side=tk.LEFT, padx=8)
         ttk.Button(row5, text=translations[load_language()]["btn_save"], command=lambda: self._save_logo_png(logo_var.get())).pack(side=tk.LEFT)
+
+        row6 = ttk.Frame(frm); row6.pack(anchor="w", pady=8)
+        ttk.Label(row6, text=t["option_bg"]).pack(side=tk.LEFT)
+        bgs = list_bg_images()
+        bg_var = tk.StringVar(value=cfg.get("bg_image", ""))
+        ttk.Combobox(row6, textvariable=bg_var, values=bgs, state="readonly", width=28).pack(side=tk.LEFT, padx=8)
+        ttk.Button(row6, text=translations[load_language()]["btn_save"], command=lambda: self._save_bg_image(bg_var.get())).pack(side=tk.LEFT)
 
         ttk.Button(frm, text=t["option_l"], command=self.show_changelog).pack(anchor="w", pady=(10,0))
 
