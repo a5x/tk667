@@ -1,3 +1,4 @@
+
 import os
 import sys
 import json
@@ -9,6 +10,7 @@ import subprocess
 import time
 from pathlib import Path
 import tempfile
+import stat
 
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
@@ -96,7 +98,7 @@ translations = {
         "color_green": "Vert",
         "color_saved": "Couleur appliquée.",
         "update_title": "Mise à jour disponible",
-        "update_text": "Version {latest} disponible (actuelle {current}).\n\nClique sur « Télécharger et installer » pour mettre à jour l’application.",
+        "update_text": "Version {latest} disponible (actuelle {current}).\\n\\nClique sur « Télécharger et installer » pour mettre à jour l’application.",
         "btn_update_now": "Télécharger et installer",
         "status_checking": "Vérification…",
         "status_downloading": "Téléchargement… {pct}%",
@@ -105,6 +107,7 @@ translations = {
         "status_done": "Mise à jour terminée.",
         "restart_prompt": "Mise à jour installée. Redémarrer maintenant ?",
         "error_update": "Échec de mise à jour : {err}",
+        "blocked_until_update": "Mise à jour requise — les actions sont désactivées jusqu’à l’installation.",
     },
     "en": {
         "menu_title": "========= New Release 2.1 =========",
@@ -167,7 +170,7 @@ translations = {
         "color_green": "Green",
         "color_saved": "Color applied.",
         "update_title": "Update available",
-        "update_text": "Version {latest} available (current {current}).\n\nClick “Download & install” to update.",
+        "update_text": "Version {latest} available (current {current}).\\n\\nClick “Download & install” to update.",
         "btn_update_now": "Download & install",
         "status_checking": "Checking…",
         "status_downloading": "Downloading… {pct}%",
@@ -176,6 +179,7 @@ translations = {
         "status_done": "Update complete.",
         "restart_prompt": "Update installed. Restart now?",
         "error_update": "Update failed: {err}",
+        "blocked_until_update": "Update required — actions disabled until installation.",
     }
 }
 
@@ -242,6 +246,26 @@ def _path_is_preserved(rel_path: str) -> bool:
             return True
     return False
 
+def _ensure_writable(path: Path):
+    try:
+        if not path.exists():
+            return
+        mode = path.stat().st_mode
+        if not (mode & stat.S_IWRITE):
+            path.chmod(mode | stat.S_IWRITE)
+    except Exception:
+        pass
+
+def _atomic_copy(src: Path, dst: Path):
+    """Copy src to dst atomically, with os.replace to ensure overwrite even on Windows."""
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    _ensure_writable(dst)
+    with open(src, "rb") as fsrc:
+        tmp = dst.with_suffix(dst.suffix + ".updtmp")
+        with open(tmp, "wb") as fdst:
+            shutil.copyfileobj(fsrc, fdst, length=1024*1024)
+        os.replace(tmp, dst)
+
 def check_update_gui(root: tk.Tk, console_append):
     if not requests:
         return
@@ -249,52 +273,83 @@ def check_update_gui(root: tk.Tk, console_append):
 
     def task():
         try:
-            console_append(f"Checking update version : {VERSION_URL}\n")
+            console_append(f"Checking update version : {VERSION_URL}\\n")
             r = requests.get(VERSION_URL, timeout=8)
-            console_append(f"HTTP {r.status_code}\n")
+            console_append(f"HTTP {r.status_code}\\n")
             if r.status_code != 200:
-                console_append("Error can't find the version on the github page.\n")
+                console_append("Error can't find the version on the github page.\\n")
                 return
             latest = r.text.strip()
-            console_append(f"Last Released Update : {latest} | Your Update Version : {LOCAL_VERSION}\n")
+            console_append(f"Last Released Update : {latest} | Your Update Version : {LOCAL_VERSION}\\n")
             if _is_newer(latest, LOCAL_VERSION):
                 root.after(0, lambda: _show_update_modal(root, latest, console_append))
         except Exception as e:
-            console_append(f"Update checking failed : {e}\n")
+            console_append(f"Update checking failed : {e}\\n")
     threading.Thread(target=task, daemon=True).start()
+
+def _collect_all_buttons(widget):
+    buttons = []
+    try:
+        if isinstance(widget, ttk.Button):
+            buttons.append(widget)
+    except Exception:
+        pass
+    for child in widget.winfo_children():
+        buttons.extend(_collect_all_buttons(child))
+    return buttons
+
+def _set_all_buttons_state(root, state: str):
+    for btn in _collect_all_buttons(root):
+        try:
+            btn.state([state] if state == "disabled" else ["!disabled"])
+        except Exception:
+            try:
+                btn.configure(state=state)
+            except Exception:
+                pass
 
 def _show_update_modal(root: tk.Tk, latest: str, console_append):
     lang = load_language(); t = translations.get(lang, translations["fr"])
+
+    _set_all_buttons_state(root, "disabled")
+    try:
+        root.attributes("-disabled", True)
+    except Exception:
+        pass
+
     win = tk.Toplevel(root)
     win.title(t["update_title"])
-    win.geometry("460x220")
+    win.geometry("480x240")
     win.transient(root)
     win.grab_set()
+
+    def _deny_close():
+        pass
+    win.protocol("WM_DELETE_WINDOW", _deny_close)
+
     frm = ttk.Frame(win, padding=16); frm.pack(fill=tk.BOTH, expand=True)
-
     msg = t["update_text"].format(latest=latest, current=LOCAL_VERSION)
-    ttk.Label(frm, text=msg, justify="left", wraplength=420).pack(anchor="w")
+    ttk.Label(frm, text=msg, justify="left", wraplength=440).pack(anchor="w")
 
-    prog = ttk.Progressbar(frm, orient="horizontal", mode="determinate", maximum=100, length=420)
+    prog = ttk.Progressbar(frm, orient="horizontal", mode="determinate", maximum=100, length=440)
     prog.pack(pady=(12, 6))
     status_var = tk.StringVar(value=t["status_checking"])
     ttk.Label(frm, textvariable=status_var).pack(anchor="w")
 
     btn = ttk.Button(frm, text=t["btn_update_now"],
-                     command=lambda: _start_update_thread(win, prog, status_var, latest, console_append))
+                     command=lambda: _start_update_thread(win, prog, status_var, latest, console_append, root))
     btn.pack(pady=(10, 0))
 
-
 def _start_update_thread(win: tk.Toplevel, prog: ttk.Progressbar, status_var: tk.StringVar,
-                         latest: str, console_append):
+                         latest: str, console_append, root):
     threading.Thread(
         target=_perform_update,
-        args=(win, prog, status_var, latest, console_append),
+        args=(win, prog, status_var, latest, console_append, root),
         daemon=True
     ).start()
 
 def _perform_update(win: tk.Toplevel, prog: ttk.Progressbar, status_var: tk.StringVar,
-                    latest: str, console_append):
+                    latest: str, console_append, root):
     lang = load_language(); t = translations.get(lang, translations["fr"])
     base_dir = Path.cwd()
 
@@ -315,7 +370,7 @@ def _perform_update(win: tk.Toplevel, prog: ttk.Progressbar, status_var: tk.Stri
                             pct = int(downloaded * 100 / total)
                             prog["value"] = pct
                             status_var.set(t["status_downloading"].format(pct=pct))
-        console_append(f"\nZIP downloaded to: {tmp_zip}\n")
+        console_append(f"\\nZIP downloaded to: {tmp_zip}\\n")
     except Exception as e:
         messagebox.showerror(translations[load_language()]["update_title"], t["error_update"].format(err=str(e)))
         return
@@ -327,26 +382,38 @@ def _perform_update(win: tk.Toplevel, prog: ttk.Progressbar, status_var: tk.Stri
         with zipfile.ZipFile(tmp_zip, "r") as z:
             z.extractall(extract_dir)
         src_root = next(extract_dir.iterdir())
-        console_append(f"Extracted to: {src_root}\n")
+        console_append(f"Extracted to: {src_root}\\n")
     except Exception as e:
         messagebox.showerror(translations[load_language()]["update_title"], t["error_update"].format(err=str(e)))
         return
 
     try:
         status_var.set(t["status_applying"])
-        to_copy = []
+
+        files_to_copy = []
         for p in src_root.rglob("*"):
             if p.is_dir():
                 continue
             rel = str(p.relative_to(src_root)).replace("\\", "/")
             if _path_is_preserved(rel):
                 continue
-            to_copy.append((p, base_dir / rel))
+            files_to_copy.append((rel, p, base_dir / rel))
 
-        total = len(to_copy) or 1
-        for i, (src, dst) in enumerate(to_copy, 1):
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
+        files_to_copy.sort(key=lambda t: (t[0] != "main.py", t[0]))
+
+        total = len(files_to_copy) or 1
+        for i, (rel, src, dst) in enumerate(files_to_copy, 1):
+            try:
+                _atomic_copy(src, dst)
+            except PermissionError:
+                try:
+                    if dst.exists():
+                        _ensure_writable(dst)
+                        dst.unlink()
+                    _atomic_copy(src, dst)
+                except Exception as e:
+                    console_append(f"[WARN] Could not replace {rel}: {e}\\n")
+                    raise
             pct = int(i * 100 / total)
             prog["value"] = pct
 
@@ -356,13 +423,26 @@ def _perform_update(win: tk.Toplevel, prog: ttk.Progressbar, status_var: tk.Stri
         return
 
     try:
-        if messagebox.askyesno(APP_TITLE, t["restart_prompt"]):
+        try:
+            root.attributes("-disabled", False)
+        except Exception:
+            pass
+
+        if messagebox.askyesno(APP_TITLE, t["restart_prompt"], parent=win):
             python = sys.executable
             os.execl(python, python, *sys.argv)
         else:
-            win.destroy()
+            try:
+                win.destroy()
+            except Exception:
+                pass
+            _set_all_buttons_state(root, "!disabled")
     except Exception:
-        win.destroy()
+        try:
+            win.destroy()
+        except Exception:
+            pass
+        _set_all_buttons_state(root, "!disabled")
 
 class ProcessRunner:
     def __init__(self, console_append):
@@ -372,16 +452,16 @@ class ProcessRunner:
     def run(self, cmd, cwd=None):
         with self.lock:
             if self.proc and self.proc.poll() is None:
-                self.console_append("Un script est déjà en cours.\n")
+                self.console_append("Un script est déjà en cours.\\n")
                 return
             try:
-                self.console_append(f"\n$ {' '.join(cmd)}\n")
+                self.console_append(f"\\n$ {' '.join(cmd)}\\n")
                 self.proc = subprocess.Popen(
                     cmd, cwd=cwd, stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT, text=True, bufsize=1
                 )
             except FileNotFoundError:
-                self.console_append("Python ou le script est introuvable.\n")
+                self.console_append("Python ou le script est introuvable.\\n")
                 return
         def reader():
             try:
@@ -389,7 +469,7 @@ class ProcessRunner:
                     self.console_append(line)
             finally:
                 rc = self.proc.poll()
-                self.console_append(f"\n[Process terminé] Code: {rc}\n")
+                self.console_append(f"\\n[Process terminé] Code: {rc}\\n")
         threading.Thread(target=reader, daemon=True).start()
 
 class App(tk.Tk):
@@ -459,7 +539,6 @@ class App(tk.Tk):
         self.apply_color_theme(self.current_color)
 
         self.show_home()
-        # Vérification auto au démarrage ⇒ affichera le popup s'il y a mieux
         self.after(800, lambda: check_update_gui(self, self.console_append))
 
     def is_dark(self) -> bool:
@@ -482,10 +561,6 @@ class App(tk.Tk):
         save_config(cfg)
 
     def apply_color_theme(self, name: str):
-        """
-        Accent color for the whole UI (buttons/frames/labels/hover).
-        Options: 'sky', 'blue', 'red', 'yellow', 'green'
-        """
         palette = {
             "sky":    {"accent": "#32A9E0", "accent_fg": "#ffffff", "bg": "#F4F6F8"},
             "blue":   {"accent": "#0B61A4", "accent_fg": "#ffffff", "bg": "#F3F5F8"},
@@ -673,8 +748,9 @@ class App(tk.Tk):
         frm = ttk.Frame(self.content_left); frm.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
         ttk.Label(frm, text="Changelogs", font=("Segoe UI", 14, "bold")).pack(anchor="w")
         txt = tk.Text(frm, height=18, wrap="word"); txt.pack(fill=tk.BOTH, expand=True)
-        txt.insert("1.0", "\n".join([
-            "", "Changelogs :", "2.3 : Couleurs d’interface (Bleu ciel, Bleu foncé, Rouge, Jaune, Vert).",
+        txt.insert("1.0", "\\n".join([
+            "", "Changelogs :", "2.4 : Fix updater (remplace main.py en premier, copie atomique, UI bloquée).",
+            "2.3 : Couleurs d’interface (Bleu ciel, Bleu foncé, Rouge, Jaune, Vert).",
             "2.2 : Sélecteur thème console (clair/sombre).", "2.1 : Script nombre de comptes voulu.",
             "2.0 : Corrections et optimisations.", "1.9 : Telegram file sender.",
             "1.8 : Cleaner + comptes certif.", "1.7 : Scraper hashtag custom.",
@@ -686,15 +762,15 @@ class App(tk.Tk):
 
     def show_tuto(self):
         top = tk.Toplevel(self); top.title(translations[load_language()]["tuto_title"]); top.geometry("700x600")
-        msg = ("=== Tuto Tiktok Scrapper + checker ===\n\n"
-               "1/ Collecte de profils → tiktok_profiles.txt\n"
-               "2/ Filtrage emails dans la bio → profiles_with_email.txt\n"
-               "3/ Mode complet : enchaîne 1 puis 2\n"
-               "4/ Hashtag scraper (#foryou, #trend, ...)\n"
-               "5/ Comptes certifiés\n"
-               "6/ Infos publiques API\n"
-               "7/ Nettoyage fichiers .txt\n"
-               "8/ Paramètres : langue, scroll, thème, couleur, logo\n")
+        msg = ("=== Tuto Tiktok Scrapper + checker ===\\n\\n"
+               "1/ Collecte de profils → tiktok_profiles.txt\\n"
+               "2/ Filtrage emails dans la bio → profiles_with_email.txt\\n"
+               "3/ Mode complet : enchaîne 1 puis 2\\n"
+               "4/ Hashtag scraper (#foryou, #trend, ...)\\n"
+               "5/ Comptes certifiés\\n"
+               "6/ Infos publiques API\\n"
+               "7/ Nettoyage fichiers .txt\\n"
+               "8/ Paramètres : langue, scroll, thème, couleur, logo\\n")
         t = tk.Text(top, wrap="word"); t.pack(fill=tk.BOTH, expand=True); t.insert("1.0", msg); t.configure(state=tk.DISABLED)
 
     def run_script(self, script_path: str):
