@@ -23,7 +23,7 @@ except Exception:
 APP_TITLE = "667 SCRAPER"
 APP_MIN_SIZE = (1024, 640)
 
-LOCAL_VERSION = "2.4"
+LOCAL_VERSION = "2.3"
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
@@ -170,7 +170,7 @@ translations = {
         "color_green": "Green",
         "color_saved": "Color applied.",
         "update_title": "Update available",
-        "update_text": "Version {latest} available (current {current}).\\n\\nClick “Download & install” to update.",
+        "update_text": "Version {latest} available (current {current}).\n \n Click “Download & install” to update.",
         "btn_update_now": "Download & install",
         "status_checking": "Checking…",
         "status_downloading": "Downloading… {pct}%",
@@ -273,18 +273,18 @@ def check_update_gui(root: tk.Tk, console_append):
 
     def task():
         try:
-            console_append(f"Checking update version : {VERSION_URL}\\n")
+            console_append(f"Checking update version : {VERSION_URL}\n")
             r = requests.get(VERSION_URL, timeout=8)
-            console_append(f"HTTP {r.status_code}\\n")
+            console_append(f"HTTP {r.status_code}\n")
             if r.status_code != 200:
-                console_append("Error can't find the version on the github page.\\n")
+                console_append("Error can't find the version on the github page.\n")
                 return
             latest = r.text.strip()
-            console_append(f"Last Released Update : {latest} | Your Update Version : {LOCAL_VERSION}\\n")
+            console_append(f"Last Released Update : {latest} | Your Update Version : {LOCAL_VERSION}\n")
             if _is_newer(latest, LOCAL_VERSION):
                 root.after(0, lambda: _show_update_modal(root, latest, console_append))
         except Exception as e:
-            console_append(f"Update checking failed : {e}\\n")
+            console_append(f"Update checking failed : {e}\n")
     threading.Thread(target=task, daemon=True).start()
 
 def _collect_all_buttons(widget):
