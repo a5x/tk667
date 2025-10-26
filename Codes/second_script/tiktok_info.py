@@ -30,14 +30,7 @@ def format_number(value):
 def display_banner():
     os.system('cls' if os.name == 'nt' else 'clear')
     ascii_art = r"""
-                                                              ______    ______   _______  
-                                                            .' ____ \ .' ____ \ |  ___  | 
-                                                            | |____\_|| |____\_||_/  / /  
-                                                            | '____`'.| '____`'.    / /   
-                                                            | (____) || (____) |   / /    
-                                                            '.______.''.______.'  /_/     
 
-                                             s/O Le Z                2.0                     s/O Le D
 """
     print(Fore.WHITE + ascii_art)
     sep = "=" * 150
