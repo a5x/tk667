@@ -92,21 +92,36 @@ translations = {
         "option_logo": "Logo",
         "logo_saved": "Logo mis à jour.",
         "option_color": "Couleur (UI)",
-        "color_sky": "Bleu ciel",
-        "color_blue": "Bleu foncé",
-        "color_red": "Rouge",
-        "color_yellow": "Jaune",
-        "color_green": "Vert",
-        "color_pink": "Rose",
-        "color_orange": "Orange",
-        "color_violet": "Violet",
+            "color_sky": "Bleu ciel",
+            "color_blue": "Bleu foncé",
+            "color_red": "Rouge",
+            "color_yellow": "Jaune",
+            "color_green": "Vert",
+            "color_pink": "Rose",
+            "color_orange": "Orange",
+            "color_violet": "Violet",
+            "color_teal": "Sarcelle",
+            "color_purple": "Pourpre",
+            "color_coral": "Corail",
+            "color_mint": "Menthe",
+            "color_navy": "Marine",
+            "color_lavender": "Lavande",
+            "color_gold": "Doré",
+            "color_charcoal": "Charbon",
+            "color_peach": "Pêche",
+            "color_cyan": "Cyan",
         "color_saved": "Couleur appliquée.",
-        "option_console_preset": "Couleur de la console",
-        "console_preset_default": "Par défaut",
-        "console_preset_green": "Vert sur noir",
-        "console_preset_amber": "Ambre sur noir",
-        "console_preset_light": "Clair",
-        "console_preset_saved": "Préréglage console appliqué.",
+    "option_console_preset": "Couleur de la console",
+    "console_preset_default": "Par défaut",
+    "console_preset_green": "Vert sur noir",
+    "console_preset_amber": "Ambre sur noir",
+    "console_preset_light": "Clair",
+    "console_preset_pastel": "Pastel",
+    "console_preset_night": "Night (soft)",
+    "console_preset_solar": "Solarized",
+    "console_preset_pink": "Rose sur noir",
+    "console_preset_navy": "Marine sur noir",
+    "console_preset_saved": "Préréglage console appliqué.",
         "update_title": "Mise à jour disponible",
         "update_text": "Version {latest} disponible (actuelle {current}).\n\nClique sur « Télécharger et installer » pour mettre à jour l’application.",
         "btn_update_now": "Télécharger et installer",
@@ -201,21 +216,36 @@ translations = {
         "option_logo": "Logo",
         "logo_saved": "Logo updated.",
         "option_color": "Color (UI)",
-        "color_sky": "Sky blue",
-        "color_blue": "Dark blue",
-        "color_red": "Red",
-        "color_yellow": "Yellow",
-        "color_green": "Green",
-        "color_pink": "Pink",
-        "color_orange": "Orange",
-        "color_violet": "Violet",
+            "color_sky": "Sky blue",
+            "color_blue": "Dark blue",
+            "color_red": "Red",
+            "color_yellow": "Yellow",
+            "color_green": "Green",
+            "color_pink": "Pink",
+            "color_orange": "Orange",
+            "color_violet": "Violet",
+            "color_teal": "Teal",
+            "color_purple": "Purple",
+            "color_coral": "Coral",
+            "color_mint": "Mint",
+            "color_navy": "Navy",
+            "color_lavender": "Lavender",
+            "color_gold": "Gold",
+            "color_charcoal": "Charcoal",
+            "color_peach": "Peach",
+            "color_cyan": "Cyan",
         "color_saved": "Color applied.",
-        "option_console_preset": "Console Color",
-        "console_preset_default": "Default",
-        "console_preset_green": "Green on black",
-        "console_preset_amber": "Amber on black",
-        "console_preset_light": "Light",
-        "console_preset_saved": "Console preset applied.",
+    "option_console_preset": "Console Color",
+    "console_preset_default": "Default",
+    "console_preset_green": "Green on black",
+    "console_preset_amber": "Amber on black",
+    "console_preset_light": "Light",
+    "console_preset_pastel": "Pastel",
+    "console_preset_night": "Night (soft)",
+    "console_preset_solar": "Solarized",
+    "console_preset_pink": "Pink on black",
+    "console_preset_navy": "Navy on black",
+    "console_preset_saved": "Console preset applied.",
         "update_title": "Update available",
         "update_text": "Version {latest} available (current {current}).\n \n Click “Download & install” to update.",
         "btn_update_now": "Download & install",
@@ -681,6 +711,11 @@ class App(tk.Tk):
                     "green": {"bg": "#001100", "fg": "#00ff55", "insert": "#00ff55"},
                     "amber": {"bg": "#0b0b00", "fg": "#ffcc66", "insert": "#ffcc66"},
                     "light": {"bg": "#ffffff", "fg": "#222222", "insert": "#000000"},
+                    "pastel": {"bg": "#fffdf8", "fg": "#2b2b2b", "insert": "#ff7aa2"},
+                    "night": {"bg": "#08121a", "fg": "#bcd8e8", "insert": "#66d9ef"},
+                    "solar": {"bg": "#002b36", "fg": "#839496", "insert": "#b58900"},
+                    "pink": {"bg": "#0b0010", "fg": "#ff9ec9", "insert": "#ff9ec9"},
+                    "navy": {"bg": "#00122b", "fg": "#9fd3ff", "insert": "#9fd3ff"},
                 }
                 p = presets.get(preset)
                 if p:
@@ -708,6 +743,17 @@ class App(tk.Tk):
                 "orange": {"accent": "#F57C00", "accent_fg": "#ffffff", "bg": "#FFF7ED"},
                 "violet": {"accent": "#6A1B9A", "accent_fg": "#ffffff", "bg": "#F6F0FB"},
             "green":  {"accent": "#2E7D32", "accent_fg": "#ffffff", "bg": "#F1F7F2"},
+            # additional themes
+            "teal":   {"accent": "#009688", "accent_fg": "#ffffff", "bg": "#F0FBFA"},
+            "purple": {"accent": "#7B1FA2", "accent_fg": "#ffffff", "bg": "#FBF0FD"},
+            "coral":  {"accent": "#FF6F61", "accent_fg": "#ffffff", "bg": "#FFF4F2"},
+            "mint":   {"accent": "#2ECC71", "accent_fg": "#ffffff", "bg": "#F6FFF3"},
+            "navy":   {"accent": "#0D47A1", "accent_fg": "#ffffff", "bg": "#F4F7FB"},
+            "lavender": {"accent": "#B39DDB", "accent_fg": "#ffffff", "bg": "#FBF8FF"},
+            "gold":   {"accent": "#D4AF37", "accent_fg": "#111111", "bg": "#FFFBF1"},
+            "charcoal": {"accent": "#34495E", "accent_fg": "#ffffff", "bg": "#F3F5F7"},
+            "peach":  {"accent": "#FFB07C", "accent_fg": "#111111", "bg": "#FFF8F3"},
+            "cyan":   {"accent": "#00BCD4", "accent_fg": "#ffffff", "bg": "#F2FDFF"},
         }
         if name not in palette:
             name = "sky"
@@ -939,7 +985,13 @@ class App(tk.Tk):
 
         row4 = ttk.Frame(frm); row4.pack(anchor="w", pady=8)
         ttk.Label(row4, text=t["option_color"]).pack(side=tk.LEFT)
-        color_labels = [t["color_sky"], t["color_blue"], t["color_red"], t["color_yellow"], t["color_pink"], t["color_orange"], t["color_violet"], t["color_green"]]
+        color_labels = [
+            t["color_sky"], t["color_blue"], t["color_red"], t["color_yellow"],
+            t["color_pink"], t["color_orange"], t["color_violet"], t["color_green"],
+            t["color_teal"], t["color_purple"], t["color_coral"], t["color_mint"],
+            t["color_navy"], t["color_lavender"], t["color_gold"], t["color_charcoal"],
+            t["color_peach"], t["color_cyan"],
+        ]
         color_map = {
             t["color_sky"]: "sky",
             t["color_blue"]: "blue",
@@ -949,6 +1001,16 @@ class App(tk.Tk):
             t["color_orange"]: "orange",
             t["color_violet"]: "violet",
             t["color_green"]: "green",
+            t["color_teal"]: "teal",
+            t["color_purple"]: "purple",
+            t["color_coral"]: "coral",
+            t["color_mint"]: "mint",
+            t["color_navy"]: "navy",
+            t["color_lavender"]: "lavender",
+            t["color_gold"]: "gold",
+            t["color_charcoal"]: "charcoal",
+            t["color_peach"]: "peach",
+            t["color_cyan"]: "cyan",
         }
         inv_color_map = {v: k for k, v in color_map.items()}
         color_var = tk.StringVar(value=inv_color_map.get(cfg.get("color_theme","sky"), t["color_sky"]))
@@ -957,12 +1019,22 @@ class App(tk.Tk):
 
         row4b = ttk.Frame(frm); row4b.pack(anchor="w", pady=8)
         ttk.Label(row4b, text=t["option_console_preset"]).pack(side=tk.LEFT)
-        preset_labels = [t["console_preset_default"], t["console_preset_green"], t["console_preset_amber"], t["console_preset_light"]]
+        preset_labels = [
+            t["console_preset_default"], t["console_preset_green"], t["console_preset_amber"], t["console_preset_light"],
+            t.get("console_preset_pastel", "Pastel"), t.get("console_preset_night", "Night (soft)"),
+            t.get("console_preset_solar", "Solarized"), t.get("console_preset_pink", "Pink on black"),
+            t.get("console_preset_navy", "Navy on black"),
+        ]
         preset_map = {
             t["console_preset_default"]: "default",
             t["console_preset_green"]: "green",
             t["console_preset_amber"]: "amber",
             t["console_preset_light"]: "light",
+            t.get("console_preset_pastel", "Pastel"): "pastel",
+            t.get("console_preset_night", "Night (soft)"): "night",
+            t.get("console_preset_solar", "Solarized"): "solar",
+            t.get("console_preset_pink", "Pink on black"): "pink",
+            t.get("console_preset_navy", "Navy on black"): "navy",
         }
         inv_preset_map = {v: k for k, v in preset_map.items()}
         console_preset_var = tk.StringVar(value=inv_preset_map.get(cfg.get("console_preset","default"), t["console_preset_default"]))
@@ -1143,10 +1215,6 @@ class App(tk.Tk):
         if not files:
             self.rc_listbox.insert(tk.END, "(no cookie files found in acc/cookies/)")
             return
-        for f in files:
-            self.rc_listbox.insert(tk.END, os.path.basename(f))
-
-    def _rc_launch_selected(self):
         idx = self.rc_listbox.curselection()
         if not idx:
             messagebox.showerror("Selection requise", "Choisir un fichier cookie dans la liste.")
