@@ -1,3 +1,4 @@
+# main.py
 import os
 import sys
 import json
@@ -10,6 +11,7 @@ import time
 from pathlib import Path
 import tempfile
 import stat
+import datetime  # <-- ajouté
 
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
@@ -22,11 +24,11 @@ except Exception:
 APP_TITLE = "667 SCRAPER"
 APP_MIN_SIZE = (1024, 640)
 
-LOCAL_VERSION = "2.4"
+LOCAL_VERSION = "2.5"
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
-VERSION_URL = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/refs/heads/main/version.txt"
+VERSION_URL = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/main/version.txt"
 ZIP_URL = f"https://codeload.github.com/{GITHUB_OWNER}/{GITHUB_REPO}/zip/refs/heads/{GITHUB_BRANCH}"
 
 PRESERVE_PATHS = [
@@ -37,7 +39,7 @@ PRESERVE_PATHS = [
 
 translations = {
     "fr": {
-        "menu_title": "========= New Release 2.1 =========",
+    "menu_title": "★ Nouvelle version {version} ★",
         "option_1": "Démarrer : (collecte profils)",
         "option_2": "Démarrer : (check bio pour emails)",
         "option_3": "Lancer : Scripts Collect + emails",
@@ -87,7 +89,7 @@ translations = {
         "theme_light": "Clair",
         "theme_dark": "Sombre",
         "theme_saved": "Thème appliqué.",
-        "option_logo": "Logo (PNG dans Settings)",
+        "option_logo": "Logo",
         "logo_saved": "Logo mis à jour.",
         "option_color": "Couleur (UI)",
         "color_sky": "Bleu ciel",
@@ -95,7 +97,16 @@ translations = {
         "color_red": "Rouge",
         "color_yellow": "Jaune",
         "color_green": "Vert",
+        "color_pink": "Rose",
+        "color_orange": "Orange",
+        "color_violet": "Violet",
         "color_saved": "Couleur appliquée.",
+        "option_console_preset": "Couleur de la console",
+        "console_preset_default": "Par défaut",
+        "console_preset_green": "Vert sur noir",
+        "console_preset_amber": "Ambre sur noir",
+        "console_preset_light": "Clair",
+        "console_preset_saved": "Préréglage console appliqué.",
         "update_title": "Mise à jour disponible",
         "update_text": "Version {latest} disponible (actuelle {current}).\n\nClique sur « Télécharger et installer » pour mettre à jour l’application.",
         "btn_update_now": "Télécharger et installer",
@@ -107,9 +118,37 @@ translations = {
         "restart_prompt": "Mise à jour installée. Redémarrer maintenant ?",
         "error_update": "Échec de mise à jour : {err}",
         "blocked_until_update": "Mise à jour requise — les actions sont désactivées jusqu’à l’installation.",
+        "nav_credits": "Crédits",
+        "credits_title": "Crédits",
+        "status_connected": "Connecté",
+        "status_disconnected": "Compte : non connecté",
+        "status_for": "depuis",
+        "credits_lines": [
+            "dev @enabIe idea from @repient RU translation s/O : @?????"
+        ],
+        "changelogs_title": "Changelogs",
+        "changelogs_lines": [
+            "",
+            "Changelogs :",
+            "2.4 : Fix updater (remplace main.py en premier, copie atomique, UI bloquée).",
+            "2.3 : Couleurs d’interface (Bleu ciel, Bleu foncé, Rouge, Jaune, Vert, Rose, Orange, Violet).",
+            "2.2 : Sélecteur thème console (clair/sombre).",
+            "2.1 : Script nombre de comptes voulu.",
+            "2.0 : Corrections et optimisations.",
+            "1.9 : Telegram file sender.",
+            "1.8 : Cleaner + comptes certif.",
+            "1.7 : Scraper hashtag custom.",
+            "1.6 : Scraper hashtag.",
+            "1.5 : Rework Codes/Scripts.",
+            "1.4 : UI Update.",
+            "1.3 : Scripts chainés + TikTok info.",
+            "1.2 : Choix de la langue.",
+            "1.1 : Paramètres.",
+            "1.0 : Initial."
+        ],
     },
     "en": {
-        "menu_title": "========= New Release 2.1 =========",
+    "menu_title": "★ New Release {version} ★",
         "option_1": "Start : (collect profiles)",
         "option_2": "Start : (check about me for emails)",
         "option_3": "Run : Collect + emails",
@@ -159,7 +198,7 @@ translations = {
         "theme_light": "Light",
         "theme_dark": "Dark",
         "theme_saved": "Theme applied.",
-        "option_logo": "Logo (PNG in Settings)",
+        "option_logo": "Logo",
         "logo_saved": "Logo updated.",
         "option_color": "Color (UI)",
         "color_sky": "Sky blue",
@@ -167,7 +206,16 @@ translations = {
         "color_red": "Red",
         "color_yellow": "Yellow",
         "color_green": "Green",
+        "color_pink": "Pink",
+        "color_orange": "Orange",
+        "color_violet": "Violet",
         "color_saved": "Color applied.",
+        "option_console_preset": "Console Color",
+        "console_preset_default": "Default",
+        "console_preset_green": "Green on black",
+        "console_preset_amber": "Amber on black",
+        "console_preset_light": "Light",
+        "console_preset_saved": "Console preset applied.",
         "update_title": "Update available",
         "update_text": "Version {latest} available (current {current}).\n \n Click “Download & install” to update.",
         "btn_update_now": "Download & install",
@@ -179,6 +227,34 @@ translations = {
         "restart_prompt": "Update installed. Restart now?",
         "error_update": "Update failed: {err}",
         "blocked_until_update": "Update required — actions disabled until installation.",
+        "nav_credits": "Credits",
+        "status_connected": "Connected",
+        "status_disconnected": "Not connected",
+        "status_for": "for",
+        "credits_title": "Credits",
+        "credits_lines": [
+            "dev @enabIe idea from @repient RU translation s/O : @?????"
+        ],
+        "changelogs_title": "Changelogs",
+        "changelogs_lines": [
+            "",
+            "Changelogs :",
+            "2.4 : Fix updater (replace main.py first, atomic copy, UI locked).",
+            "2.3 : UI colors (Sky, Dark blue, Red, Yellow, Green, Pink, Orange, Violet).",
+            "2.2 : Console theme selector (light/dark).",
+            "2.1 : Script number of desired accounts.",
+            "2.0 : Fixes and optimizations.",
+            "1.9 : Telegram file sender.",
+            "1.8 : Cleaner + verified accounts.",
+            "1.7 : Custom hashtag scraper.",
+            "1.6 : Hashtag scraper.",
+            "1.5 : Rework Codes/Scripts.",
+            "1.4 : UI Update.",
+            "1.3 : Chained scripts + TikTok info.",
+            "1.2 : Language choice.",
+            "1.1 : Settings.",
+            "1.0 : Initial."
+        ],
     }
 }
 
@@ -186,6 +262,7 @@ SETTINGS_DIR = Path("Settings")
 SETTINGS_DIR.mkdir(exist_ok=True)
 LANG_FILE = SETTINGS_DIR / "lang_config.json"
 CONFIG_FILE = SETTINGS_DIR / "config.json"
+SESSION_STATUS_FILE = SETTINGS_DIR / "session_status.json"  # <-- ajouté
 
 def load_language() -> str:
     if LANG_FILE.exists():
@@ -486,7 +563,6 @@ class App(tk.Tk):
             except Exception: pass
 
         cfg = load_config()
-        self.current_theme = cfg.get("theme", "dark")
         self.current_color = cfg.get("color_theme", "sky")
 
         top = ttk.Frame(self)
@@ -513,6 +589,15 @@ class App(tk.Tk):
         else:
             self.logo_label = ttk.Label(top, text="667 SCRAPER", font=("Segoe UI", 14, "bold"))
             self.logo_label.pack(side=tk.LEFT, padx=10, pady=6)
+
+        center = ttk.Frame(top)
+        center.pack(side=tk.LEFT, expand=True)
+
+        self.session_dot = ttk.Label(center, text="●", font=("Segoe UI", 12, "bold"))
+        self.session_dot.pack(anchor="center")
+        self.session_var = tk.StringVar(value=translations[load_language()]["status_disconnected"])
+        self.session_label = ttk.Label(center, textvariable=self.session_var, font=("Segoe UI", 11, "bold"))
+        self.session_label.pack(anchor="center")
 
         ttk.Button(top, text=translations[load_language()]["btn_check_updates"],
                    command=lambda: check_update_gui(self, self.console_append)).pack(side=tk.RIGHT, padx=6)
@@ -544,31 +629,74 @@ class App(tk.Tk):
         ttk.Button(nav, text=translations[load_language()]["nav_tiktok"], command=self.show_tiktok).pack(fill=tk.X, padx=6, pady=4)
         ttk.Button(nav, text=translations[load_language()]["nav_settings"], command=self.show_settings).pack(fill=tk.X, padx=6, pady=4)
         ttk.Button(nav, text=translations[load_language()]["nav_changelog"], command=self.show_changelog).pack(fill=tk.X, padx=6, pady=4)
+        ttk.Button(nav, text=translations[load_language()]["nav_credits"], command=self.show_credits).pack(fill=tk.X, padx=6, pady=4)
 
-        self.apply_theme(self.current_theme)
+        ttk.Button(nav, text="Region Changer", command=self.show_region_changer).pack(fill=tk.X, padx=6, pady=4)
+
         self.apply_color_theme(self.current_color)
+
+        self._reset_session_status_on_start()
 
         self.show_home()
         self.after(800, lambda: check_update_gui(self, self.console_append))
 
-    def is_dark(self) -> bool:
-        return load_config().get("theme", "dark") == "dark"
+        self._schedule_session_refresh()
 
-    def _refresh_console_colors(self):
-        if self.is_dark():
-            self.console.configure(bg="#000000", fg="#e6e6e6", insertbackground="#e6e6e6")
-        else:
-            self.console.configure(bg="#ffffff", fg="#222222", insertbackground="#222222")
 
-    def apply_theme(self, pref: str):
+    def _reset_session_status_on_start(self):
         try:
-            self.style.theme_use("sun-valley-light")
+            payload = {"connected": False, "username": None, "when": None}
+            SESSION_STATUS_FILE.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+            self.session_var.set(translations[load_language()]["status_disconnected"])
+            try: self.session_dot.configure(foreground="#c0392b")
+            except Exception: pass
         except Exception:
             pass
-        self._refresh_console_colors()
+
+
+
+    def _refresh_console_colors(self):
         cfg = load_config()
-        cfg["theme"] = pref
-        save_config(cfg)
+        color = cfg.get("color_theme", getattr(self, "current_color", "sky"))
+        is_dark = cfg.get("theme", "dark") == "dark"
+
+        console_bg = "#000000" if is_dark else "#ffffff"
+        console_fg = "#e6e6e6" if is_dark else "#222222"
+        insert = console_fg
+
+        try:
+            cols = getattr(self, "_console_colors", None)
+            if cols and color in cols:
+                variant = "dark" if is_dark else "light"
+                console_bg = cols[color][variant]["bg"]
+                console_fg = cols[color][variant]["fg"]
+                insert = cols[color][variant].get("insert", console_fg)
+        except Exception:
+            pass
+
+        try:
+            preset = cfg.get("console_preset", "default")
+            if preset and preset != "default":
+                presets = {
+                    "green": {"bg": "#001100", "fg": "#00ff55", "insert": "#00ff55"},
+                    "amber": {"bg": "#0b0b00", "fg": "#ffcc66", "insert": "#ffcc66"},
+                    "light": {"bg": "#ffffff", "fg": "#222222", "insert": "#000000"},
+                }
+                p = presets.get(preset)
+                if p:
+                    console_bg = p["bg"]
+                    console_fg = p["fg"]
+                    insert = p.get("insert", console_fg)
+        except Exception:
+            pass
+
+        try:
+            self.console.configure(bg=console_bg, fg=console_fg, insertbackground=insert)
+        except Exception:
+            if is_dark:
+                self.console.configure(bg="#000000", fg="#e6e6e6", insertbackground="#e6e6e6")
+            else:
+                self.console.configure(bg="#ffffff", fg="#222222", insertbackground="#222222")
 
     def apply_color_theme(self, name: str):
         palette = {
@@ -576,14 +704,13 @@ class App(tk.Tk):
             "blue":   {"accent": "#0B61A4", "accent_fg": "#ffffff", "bg": "#F3F5F8"},
             "red":    {"accent": "#D94343", "accent_fg": "#ffffff", "bg": "#F8F3F3"},
             "yellow": {"accent": "#E0B000", "accent_fg": "#111111", "bg": "#F8F6EE"},
-            "pink":   {"accent": "#C671CE", "accent_fg": "#ffffff", "bg": "#F8F6EE"},
+            "pink":   {"accent": "#C671CE", "accent_fg": "#ffffff", "bg": "#FFF6FB"},
+                "orange": {"accent": "#F57C00", "accent_fg": "#ffffff", "bg": "#FFF7ED"},
+                "violet": {"accent": "#6A1B9A", "accent_fg": "#ffffff", "bg": "#F6F0FB"},
             "green":  {"accent": "#2E7D32", "accent_fg": "#ffffff", "bg": "#F1F7F2"},
         }
         if name not in palette:
             name = "sky"
-        acc  = palette[name]["accent"]
-        acc_fg = palette[name]["accent_fg"]
-        bg   = palette[name]["bg"]
 
         def darken(hex_color, factor=0.85):
             c = hex_color.lstrip("#")
@@ -592,6 +719,10 @@ class App(tk.Tk):
             g = max(0, min(255, int(g*factor)))
             b = max(0, min(255, int(b*factor)))
             return f"#{r:02x}{g:02x}{b:02x}"
+
+        acc = palette[name]["accent"]
+        acc_fg = palette[name]["accent_fg"]
+        bg = palette[name]["bg"]
 
         hover = darken(acc, 0.9)
         active = darken(acc, 0.8)
@@ -618,9 +749,35 @@ class App(tk.Tk):
         except Exception:
             pass
 
+        console_colors = {}
+        for nm, p in palette.items():
+            try:
+                a = p["accent"]
+                light_bg = p.get("bg", "#ffffff")
+                light_fg = "#222222"
+                dark_bg = darken(a, 0.12)
+                dark_fg = "#e6e6e6"
+                console_colors[nm] = {
+                    "light": {"bg": light_bg, "fg": light_fg, "insert": a},
+                    "dark":  {"bg": dark_bg,  "fg": dark_fg,  "insert": a},
+                }
+            except Exception:
+                console_colors[nm] = {
+                    "light": {"bg": "#ffffff", "fg": "#222222", "insert": "#000000"},
+                    "dark":  {"bg": "#000000", "fg": "#e6e6e6", "insert": "#ffffff"},
+                }
+
+        self._console_colors = console_colors
+
         cfg = load_config()
         cfg["color_theme"] = name
         save_config(cfg)
+
+        self.current_color = name
+        try:
+            self._refresh_console_colors()
+        except Exception:
+            pass
 
     def console_append(self, text: str):
         self.console.configure(state=tk.NORMAL)
@@ -661,6 +818,56 @@ class App(tk.Tk):
         for w in self.content_left.winfo_children():
             w.destroy()
 
+  
+    def _read_session_status(self):
+        """Lit Settings/session_status.json et retourne (connected: bool, username: str|None, when: int|None)."""
+        try:
+            if not SESSION_STATUS_FILE.exists():
+                return False, None, None
+            data = json.loads(SESSION_STATUS_FILE.read_text(encoding="utf-8"))
+            return bool(data.get("connected")), data.get("username"), int(data.get("when") or 0)
+        except Exception:
+            return False, None, None
+    def _fmt_duration(self, secs: int) -> str:
+        secs = max(0, int(secs))
+        h = secs // 3600
+        m = (secs % 3600) // 60
+        s = secs % 60
+        if h > 0:
+            return f"{h:02d}:{m:02d}:{s:02d}"
+        return f"{m:02d}:{s:02d}"
+
+
+    def _refresh_session_badge(self):
+        lang = load_language()
+        t = translations.get(lang, translations["fr"])
+        connected, username, when = self._read_session_status()
+
+        GREEN = "#27ae60"
+        RED   = "#c0392b"
+
+        if connected:
+            elapsed_txt = ""
+            if isinstance(when, int) and when > 0:
+                elapsed = int(time.time()) - when
+                elapsed_txt = f"  •  {t['status_for']} {self._fmt_duration(elapsed)}"
+            name = f"@{username}" if username else t["status_connected"].lower()
+            self.session_var.set(f"{t['status_connected']} : {name}{elapsed_txt}")
+            try: self.session_dot.configure(foreground=GREEN)
+            except Exception: pass
+        else:
+            self.session_var.set(t["status_disconnected"])
+            try: self.session_dot.configure(foreground=RED)
+            except Exception: pass
+
+
+    def _schedule_session_refresh(self):
+        """Rafraîchit l'état toutes les 3 secondes."""
+        try:
+            self._refresh_session_badge()
+        finally:
+            self.after(3000, self._schedule_session_refresh)
+
     def show_home(self):
         self.clear_content()
         frm = ttk.Frame(self.content_left)
@@ -668,7 +875,8 @@ class App(tk.Tk):
         center = ttk.Frame(frm)
         center.place(relx=0.5, rely=0.3, anchor="center")
         lang = load_language(); t = translations.get(lang, translations["fr"])
-        ttk.Label(center, text=t["menu_title"], font=("Segoe UI", 16, "bold")).pack(anchor="center")
+        title = t.get("menu_title", "★ New Release {version} ★").format(version=LOCAL_VERSION)
+        ttk.Label(center, text=title, font=("Segoe UI", 18, "bold")).pack(anchor="center")
         ttk.Label(center, text=t["home_welcome"]).pack(anchor="center", pady=(6, 0))
 
     def show_scraping(self):
@@ -728,28 +936,38 @@ class App(tk.Tk):
         for code, label in [("fr", "Français"), ("en", "English")]:
             ttk.Radiobutton(row2, text=label, value=code, variable=lang_var, command=lambda lv=lang_var: self._change_lang(lv.get())).pack(side=tk.LEFT, padx=6)
 
-        row3 = ttk.Frame(frm); row3.pack(anchor="w", pady=8)
-        ttk.Label(row3, text=t["option_theme"]).pack(side=tk.LEFT)
-        theme_map = {t["theme_system"]: "system", t["theme_light"]: "light", t["theme_dark"]: "dark"}
-        inv_theme_map = {v: k for k, v in theme_map.items()}
-        theme_var = tk.StringVar(value=inv_theme_map.get(cfg.get("theme","dark"), t["theme_dark"]))
-        ttk.Combobox(row3, textvariable=theme_var, values=list(theme_map.keys()), width=12, state="readonly").pack(side=tk.LEFT, padx=8)
-        ttk.Button(row3, text=translations[load_language()]["btn_save"], command=lambda: self._save_theme(theme_map.get(theme_var.get(),"dark"))).pack(side=tk.LEFT)
 
         row4 = ttk.Frame(frm); row4.pack(anchor="w", pady=8)
         ttk.Label(row4, text=t["option_color"]).pack(side=tk.LEFT)
-        color_labels = [t["color_sky"], t["color_blue"], t["color_red"], t["color_yellow"], t["color_green"]]
+        color_labels = [t["color_sky"], t["color_blue"], t["color_red"], t["color_yellow"], t["color_pink"], t["color_orange"], t["color_violet"], t["color_green"]]
         color_map = {
             t["color_sky"]: "sky",
             t["color_blue"]: "blue",
             t["color_red"]: "red",
             t["color_yellow"]: "yellow",
+            t["color_pink"]: "pink",
+            t["color_orange"]: "orange",
+            t["color_violet"]: "violet",
             t["color_green"]: "green",
         }
         inv_color_map = {v: k for k, v in color_map.items()}
         color_var = tk.StringVar(value=inv_color_map.get(cfg.get("color_theme","sky"), t["color_sky"]))
         ttk.Combobox(row4, textvariable=color_var, values=color_labels, width=16, state="readonly").pack(side=tk.LEFT, padx=8)
         ttk.Button(row4, text=translations[load_language()]["btn_save"], command=lambda: self._save_color_theme(color_map[color_var.get()])).pack(side=tk.LEFT)
+
+        row4b = ttk.Frame(frm); row4b.pack(anchor="w", pady=8)
+        ttk.Label(row4b, text=t["option_console_preset"]).pack(side=tk.LEFT)
+        preset_labels = [t["console_preset_default"], t["console_preset_green"], t["console_preset_amber"], t["console_preset_light"]]
+        preset_map = {
+            t["console_preset_default"]: "default",
+            t["console_preset_green"]: "green",
+            t["console_preset_amber"]: "amber",
+            t["console_preset_light"]: "light",
+        }
+        inv_preset_map = {v: k for k, v in preset_map.items()}
+        console_preset_var = tk.StringVar(value=inv_preset_map.get(cfg.get("console_preset","default"), t["console_preset_default"]))
+        ttk.Combobox(row4b, textvariable=console_preset_var, values=preset_labels, width=18, state="readonly").pack(side=tk.LEFT, padx=8)
+        ttk.Button(row4b, text=translations[load_language()]["btn_save"], command=lambda: self._save_console_preset(preset_map[console_preset_var.get()])).pack(side=tk.LEFT)
 
         row5 = ttk.Frame(frm); row5.pack(anchor="w", pady=8)
         ttk.Label(row5, text=t["option_logo"]).pack(side=tk.LEFT)
@@ -763,18 +981,21 @@ class App(tk.Tk):
     def show_changelog(self):
         self.clear_content()
         frm = ttk.Frame(self.content_left); frm.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
-        ttk.Label(frm, text="Changelogs", font=("Segoe UI", 14, "bold")).pack(anchor="w")
+        lang = load_language(); t = translations.get(lang, translations["fr"])
+        ttk.Label(frm, text=t.get("changelogs_title", "Changelogs"), font=("Segoe UI", 14, "bold")).pack(anchor="w")
         txt = tk.Text(frm, height=18, wrap="word"); txt.pack(fill=tk.BOTH, expand=True)
-        txt.insert("1.0", "\n".join([
-            "", "Changelogs :", "2.4 : Fix updater (remplace main.py en premier, copie atomique, UI bloquée).",
-            "2.3 : Couleurs d’interface (Bleu ciel, Bleu foncé, Rouge, Jaune, Vert).",
-            "2.2 : Sélecteur thème console (clair/sombre).", "2.1 : Script nombre de comptes voulu.",
-            "2.0 : Corrections et optimisations.", "1.9 : Telegram file sender.",
-            "1.8 : Cleaner + comptes certif.", "1.7 : Scraper hashtag custom.",
-            "1.6 : Scraper hashtag.", "1.5 : Rework Codes/Scripts.",
-            "1.4 : UI Update.", "1.3 : Scripts chainés + TikTok info.",
-            "1.2 : Choix de la langue.", "1.1 : Paramètres.", "1.0 : Initial."
-        ]))
+        lines = t.get("changelogs_lines", ["", "Changelogs :", "No entries."])
+        txt.insert("1.0", "\n".join(lines))
+        txt.configure(state=tk.DISABLED)
+
+    def show_credits(self):
+        self.clear_content()
+        frm = ttk.Frame(self.content_left); frm.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
+        lang = load_language(); t = translations.get(lang, translations["fr"])
+        ttk.Label(frm, text=t.get("credits_title", "Credits"), font=("Segoe UI", 14, "bold")).pack(anchor="w")
+        txt = tk.Text(frm, height=8, wrap="word"); txt.pack(fill=tk.BOTH, expand=True)
+        lines = t.get("credits_lines", ["dev @enabIe idea from @repient RU translation s/O : @?????"])
+        txt.insert("1.0", "\n".join(lines))
         txt.configure(state=tk.DISABLED)
 
     def show_tuto(self):
@@ -827,6 +1048,7 @@ class App(tk.Tk):
             messagebox.showerror("Introuvable", f"Le script n'existe pas : {script_path}"); return
         ProcessRunner(self.console_append).run([sys.executable, script_path, "--desired", str(desired)])
 
+
     def open_hashtag_panel(self):
         lang = load_language(); t = translations.get(lang, translations["fr"])
         top = tk.Toplevel(self); top.title(t["panel_header"]); top.geometry("420x420")
@@ -860,16 +1082,157 @@ class App(tk.Tk):
         try: self.refresh_logo()
         except Exception: pass
 
-    def _save_theme(self, pref: str):
-        self.apply_theme(pref)
-        messagebox.showinfo(translations[load_language()]["ok_title"], translations[load_language()]["theme_saved"])
 
     def _save_color_theme(self, name: str):
         self.apply_color_theme(name)
         messagebox.showinfo(translations[load_language()]["ok_title"], translations[load_language()]["color_saved"])
 
+    def _save_console_preset(self, name: str):
+        cfg = load_config()
+        if name and name != "default":
+            cfg["console_preset"] = name
+        else:
+            cfg.pop("console_preset", None)
+        save_config(cfg)
+        messagebox.showinfo(translations[load_language()]["ok_title"], translations[load_language()]["console_preset_saved"])
+        try:
+            self._refresh_console_colors()
+        except Exception:
+            pass
+
+    def show_region_changer(self):
+        """Show the Region Changer tab: lists cookie files in acc/cookies and allows launching ttkccfnf.py with the selection."""
+        self.clear_content()
+        frm = ttk.Frame(self.content_left); frm.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
+        ttk.Label(frm, text="Region Changer - acc/cookies", font=("Segoe UI", 12, "bold")).pack(anchor="w", pady=(0,8))
+
+        list_frame = ttk.Frame(frm)
+        list_frame.pack(fill=tk.BOTH, expand=True)
+
+        self.rc_listbox = tk.Listbox(list_frame, height=12, selectmode=tk.SINGLE)
+        self.rc_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        lb_sb = ttk.Scrollbar(list_frame, command=self.rc_listbox.yview)
+        lb_sb.pack(side=tk.RIGHT, fill=tk.Y)
+        self.rc_listbox.configure(yscrollcommand=lb_sb.set)
+
+        btn_frame = ttk.Frame(frm)
+        btn_frame.pack(anchor="w", pady=(8,0))
+
+        ttk.Button(btn_frame, text="Refresh", command=self._rc_refresh_list).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text="Launch", command=self._rc_launch_selected).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text=translations[load_language()]["return_menu"], command=self.show_home).pack(side=tk.LEFT, padx=12)
+
+        self._rc_refresh_list()
+
+    def _rc_cookie_files(self):
+        """Return sorted list of cookie files found in acc/cookies/ (full paths)."""
+        import glob
+        search_dir = os.path.join("acc", "cookies")
+        if not os.path.isdir(search_dir):
+            return []
+        patterns = ["frenchacc_*.txt", "frenchacc_*.json", "*.txt", "*.json"]
+        files = []
+        for p in patterns:
+            files.extend(glob.glob(os.path.join(search_dir, p)))
+        files = sorted(dict.fromkeys(files))
+        return files
+
+    def _rc_refresh_list(self):
+        self.rc_listbox.delete(0, tk.END)
+        files = self._rc_cookie_files()
+        if not files:
+            self.rc_listbox.insert(tk.END, "(no cookie files found in acc/cookies/)")
+            return
+        for f in files:
+            self.rc_listbox.insert(tk.END, os.path.basename(f))
+
+    def _rc_launch_selected(self):
+        idx = self.rc_listbox.curselection()
+        if not idx:
+            messagebox.showerror("Selection requise", "Choisir un fichier cookie dans la liste.")
+            return
+        index = idx[0]
+        files = self._rc_cookie_files()
+        if index >= len(files):
+            messagebox.showerror("Erreur", "Sélection invalide.")
+            return
+        cookie_path = files[index]
+        threading.Thread(target=self._rc_run_ttkinject, args=(index, cookie_path, files), daemon=True).start()
+
+    def _rc_run_ttkinject(self, index, cookie_path, files):
+        """
+        Launch ttkccfnf.py and automatically provide the chosen index.
+        The ttkccfnf.py script prints the list then waits input("Choose an account by number...").
+        We start it and immediately send the appropriate number (1-based).
+        Stream output into the app console.
+        """
+        script = "ttkccfnf.py"
+        if not Path(script).exists():
+            alt1 = Path("Codes") / "tiktok_cookies_changer_for_new_fyp" / "ttkccfnf.py"
+            alt2 = Path("Codes") / "ttkccfnf.py"
+            if alt1.exists():
+                script = str(alt1)
+            elif alt2.exists():
+                script = str(alt2)
+            else:
+                self.console_append(f"Script {script} introuvable.\n")
+                return
+
+        cmd = [sys.executable, script]
+        try:
+            self.console_append(f"\n$ {' '.join(cmd)}\n")
+            proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+        except Exception as e:
+            self.console_append(f"Impossible de lancer le script: {e}\n")
+            return
+
+        def reader():
+            try:
+                for line in proc.stdout:
+                    self.console_append(line)
+            except Exception as e:
+                self.console_append(f"[reader error] {e}\n")
+            finally:
+                rc = proc.poll()
+                self.console_append(f"\n[Process terminé] Code: {rc}\n")
+
+        threading.Thread(target=reader, daemon=True).start()
+
+        try:
+            to_send = f"{index+1}\n"
+            proc.stdin.write(to_send)
+            proc.stdin.flush()
+        except Exception as e:
+            self.console_append(f"Impossible d'envoyer la sélection au script: {e}\n")
+
+        # ping le badge pendant/à la fin du script (ajouté)
+        def ping_refresh():
+            for _ in range(15):  # ~30s (2s * 15)
+                if proc.poll() is not None:
+                    break
+                try:
+                    self._refresh_session_badge()
+                except Exception:
+                    pass
+                time.sleep(2)
+            try:
+                self._refresh_session_badge()
+            except Exception:
+                pass
+        threading.Thread(target=ping_refresh, daemon=True).start()
+
+
+
+    def show_changelog(self):
+        self.clear_content()
+        frm = ttk.Frame(self.content_left); frm.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
+        lang = load_language(); t = translations.get(lang, translations["fr"])
+        ttk.Label(frm, text=t.get("changelogs_title", "Changelogs"), font=("Segoe UI", 14, "bold")).pack(anchor="w")
+        txt = tk.Text(frm, height=18, wrap="word"); txt.pack(fill=tk.BOTH, expand=True)
+        lines = t.get("changelogs_lines", ["", "Changelogs :", "No entries."])
+        txt.insert("1.0", "\n".join(lines))
+        txt.configure(state=tk.DISABLED)
+
 if __name__ == "__main__":
     app = App()
     app.mainloop()
-
-

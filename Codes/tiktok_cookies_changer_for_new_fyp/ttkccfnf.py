@@ -4,11 +4,9 @@ from typing import List, Dict, Any, Optional
 import threading
 import subprocess
 
-# === UI pour demander le nombre de liens (équivalent c.py) ===
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-# === SELENIUM (selon ta demande) ===
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -26,9 +24,6 @@ USER_MAP_PATH = Path(SETTINGS_DIR) / "cookie_user_map.json"
 TXT_DIR = Path("txt_files")
 OUTPUT_FILE = TXT_DIR / "tiktok_profiles.txt"
 
-# =========================
-# Utils & fichiers
-# =========================
 def ensure_dirs():
     Path(SETTINGS_DIR).mkdir(exist_ok=True)
     TXT_DIR.mkdir(parents=True, exist_ok=True)
@@ -40,7 +35,6 @@ def find_cookie_files() -> List[str]:
     files = []
     for p in patterns:
         files.extend(glob.glob(os.path.join(COOKIE_DIR, p)))
-    # retirer doublons en conservant l'ordre
     return sorted(dict.fromkeys(files))
 
 def _to_cookie_list(obj: Any) -> List[Dict[str, Any]]:
@@ -75,14 +69,13 @@ def _to_cookie_list(obj: Any) -> List[Dict[str, Any]]:
 
 def load_cookies_from_file(path: str) -> List[Dict[str, Any]]:
     text = Path(path).read_text(encoding="utf-8", errors="ignore").strip()
-    # JSON direct
     try:
         data = json.loads(text)
         cookies = _to_cookie_list(data)
         if cookies: return cookies
     except Exception:
         pass
-    # Deux tableaux concaténés ][
+
     parts = re.split(r"\]\s*\[\s*", text)
     if len(parts) > 1:
         merged = []
@@ -93,13 +86,11 @@ def load_cookies_from_file(path: str) -> List[Dict[str, Any]]:
             except Exception:
                 pass
         if merged: return merged
-    # Python literal
     try:
         data = ast.literal_eval(text); cookies = _to_cookie_list(data)
         if cookies: return cookies
     except Exception:
         pass
-    # KEY=VALUE
     cookies = []
     for line in [l.strip() for l in text.splitlines() if l.strip()]:
         if "=" in line:
@@ -156,9 +147,7 @@ def choose_cookie_file(files: List[str], preselect: Optional[int]=None) -> Optio
             if 1 <= idx <= len(files):
                 return files[idx-1]
 
-# =========================
-# Mapping (verrou username par fichier cookies)
-# =========================
+
 def load_user_map() -> Dict[str, str]:
     try:
         if USER_MAP_PATH.exists():
@@ -174,9 +163,7 @@ def save_user_map(d: Dict[str, str]):
     except Exception:
         pass
 
-# =========================
-# Statut JSON (pour l’UI)
-# =========================
+
 def write_status(connected: bool, username: Optional[str], when_ts: Optional[int], source_cookie: Optional[str]):
     ensure_dirs()
     now = int(time.time())
@@ -192,9 +179,7 @@ def write_status(connected: bool, username: Optional[str], when_ts: Optional[int
     except Exception:
         pass
 
-# =========================
-# Mini-UI (c.py)
-# =========================
+
 def ask_number_with_tk(initial=10) -> Optional[int]:
     result = {"value": None}
     def on_ok():
@@ -216,6 +201,14 @@ def ask_number_with_tk(initial=10) -> Optional[int]:
     root.geometry("320x110")
     root.resizable(False, False)
 
+    try:
+        root.attributes("-topmost", True)
+        root.lift()
+        root.focus_force()
+        root.after(500, lambda: root.attributes("-topmost", False))
+    except Exception:
+        pass
+
     frm = ttk.Frame(root, padding=10); frm.pack(expand=True, fill="both")
     ttk.Label(frm, text="Combien de liens veux-tu collecter ?").pack(pady=(0,6))
     entry = ttk.Entry(frm); entry.insert(0, str(initial)); entry.pack(fill="x", padx=10)
@@ -230,9 +223,7 @@ def ask_number_with_tk(initial=10) -> Optional[int]:
     root.mainloop()
     return result["value"]
 
-# =========================
-# Selenium driver
-# =========================
+
 def build_driver(headless: bool=False, user_agent: Optional[str]=None):
     opts = Options()
     if headless:
@@ -243,10 +234,10 @@ def build_driver(headless: bool=False, user_agent: Optional[str]=None):
     opts.add_argument("--start-maximized")
     if user_agent:
         opts.add_argument(f"--user-agent={user_agent}")
-    # Moins de bruit dans la console
+
     opts.add_experimental_option("excludeSwitches", ["enable-logging", "enable-automation"])
 
-    service = Service()  # utilise le chromedriver dans le PATH
+    service = Service()
     try:
         if os.name == "nt":
             service.creationflags = subprocess.CREATE_NO_WINDOW
@@ -258,22 +249,18 @@ def build_driver(headless: bool=False, user_agent: Optional[str]=None):
     return driver
 
 def inject_cookies_and_open(driver, selenium_cookies: List[Dict[str, Any]]):
-    # Aller sur le domaine avant add_cookie (obligatoire)
     driver.get(BASE_URL)
     try:
         WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
     except TimeoutException:
         pass
 
-    # Ajout cookies
     for c in selenium_cookies:
         try:
-            # Selenium: domain optionnel si déjà sur domaine
             driver.add_cookie(c)
         except Exception:
             pass
 
-    # Reload pour appliquer
     driver.get(BASE_URL)
     try:
         WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
@@ -298,7 +285,6 @@ def extract_username_via_href(driver) -> Optional[str]:
     def pick_from_href(href: Optional[str]) -> Optional[str]:
         if not href: return None
         try:
-            # normaliser en URL absolue côté JS-like
             if re.match(r"^https?://", href, re.I):
                 url = href
             else:
@@ -308,7 +294,6 @@ def extract_username_via_href(driver) -> Optional[str]:
         except Exception:
             return None
 
-    # 1) a[data-e2e="nav-profile"]
     try:
         a = driver.find_element(By.CSS_SELECTOR, 'a[data-e2e="nav-profile"]')
         u = pick_from_href(a.get_attribute("href"))
@@ -316,7 +301,6 @@ def extract_username_via_href(driver) -> Optional[str]:
     except Exception:
         pass
 
-    # 2) scan anchors via JS (plus rapide)
     try:
         hrefs = driver.execute_script("""
             const out = [];
@@ -332,7 +316,6 @@ def extract_username_via_href(driver) -> Optional[str]:
     except Exception:
         pass
 
-    # 3) URL courante / meta og / canonical
     try:
         u = pick_from_href(driver.current_url)
         if u: return u
@@ -394,9 +377,7 @@ def extract_username_fallback_state(driver) -> Optional[str]:
         pass
     return None
 
-# =========================
-# Collecte (a.py) sur le même driver Selenium
-# =========================
+
 def collect_profiles_with_driver(driver, desired_links: int) -> List[str]:
     collected, seen = [], set()
     try:
@@ -408,7 +389,6 @@ def collect_profiles_with_driver(driver, desired_links: int) -> List[str]:
 
     last_height = None
     for _ in range(10000):
-        # récupérer anchors contenant /@
         try:
             anchors = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/@"]')
             for el in anchors[:1000]:
@@ -430,14 +410,13 @@ def collect_profiles_with_driver(driver, desired_links: int) -> List[str]:
         except Exception:
             pass
 
-        # scroll bas
+
         try:
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         except Exception:
             pass
         time.sleep(1.0)
 
-        # fin de page ?
         try:
             new_h = driver.execute_script("return document.body.scrollHeight")
             if last_height is not None and new_h == last_height:
@@ -454,7 +433,6 @@ def collect_profiles_with_driver(driver, desired_links: int) -> List[str]:
         if len(collected) >= desired_links:
             break
 
-    # sauvegarde
     try:
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
             for u in collected:
@@ -463,11 +441,8 @@ def collect_profiles_with_driver(driver, desired_links: int) -> List[str]:
         pass
     return collected
 
-# =========================
-# Orchestration principale (Selenium)
-# =========================
+
 def run_selenium(converted_path: str, user_agent: Optional[str], headless: bool):
-    # Déterminer un nom lisible de source cookie
     source_cookie_name = None
     try:
         bn = os.path.basename(converted_path)
@@ -478,7 +453,6 @@ def run_selenium(converted_path: str, user_agent: Optional[str], headless: bool)
 
     write_status(False, None, None, source_cookie_name)
 
-    # Charger cookies convertis
     cookies = []
     try:
         cookies = json.loads(Path(converted_path).read_text(encoding="utf-8"))
@@ -496,7 +470,6 @@ def run_selenium(converted_path: str, user_agent: Optional[str], headless: bool)
     try:
         inject_cookies_and_open(driver, cookies)
 
-        # Vérif connexion
         connected = is_connected(driver)
         username = None
         when_ts = None
@@ -504,18 +477,15 @@ def run_selenium(converted_path: str, user_agent: Optional[str], headless: bool)
         if connected:
             when_ts = int(time.time())
 
-            # extraction via href (PRIORITAIRE — ne pas altérer la logique)
             username_extracted = None
             try:
                 username_extracted = extract_username_via_href(driver)
             except Exception:
                 username_extracted = None
 
-            # fallback états si besoin
             if not username_extracted:
                 username_extracted = extract_username_fallback_state(driver)
 
-            # verrouillage via cookie_user_map.json
             try:
                 user_map = load_user_map()
                 if source_cookie_name:
@@ -534,7 +504,6 @@ def run_selenium(converted_path: str, user_agent: Optional[str], headless: bool)
 
         write_status(connected, username, when_ts, source_cookie_name)
 
-        # Ticker de statut (1s) tant que le driver est ouvert
         if connected:
             def ticker():
                 while not disconnected_evt.is_set():
@@ -542,13 +511,11 @@ def run_selenium(converted_path: str, user_agent: Optional[str], headless: bool)
                     time.sleep(1)
             threading.Thread(target=ticker, daemon=True).start()
 
-        # ====== Suite "c -> a -> b" sur le même driver ======
         if connected:
-            time.sleep(10)  # pause demandée
+            time.sleep(10)
             desired = ask_number_with_tk(initial=10)
             if desired is not None:
                 _ = collect_profiles_with_driver(driver, desired_links=desired)
-                # lancer b.py
                 b_path = os.path.join("Codes", "Scripts", "b.py")
                 if not os.path.exists(b_path):
                     b_path = "b.py"
@@ -558,11 +525,10 @@ def run_selenium(converted_path: str, user_agent: Optional[str], headless: bool)
                     except Exception:
                         pass
 
-        # Boucle de vie : on surveille la fermeture de fenêtre
         try:
             while True:
                 time.sleep(0.5)
-                _ = driver.window_handles  # si fermé, lèvera une exception
+                _ = driver.window_handles
         except WebDriverException:
             pass
         finally:
@@ -574,9 +540,7 @@ def run_selenium(converted_path: str, user_agent: Optional[str], headless: bool)
         except Exception:
             pass
 
-# =========================
-# Entrée programme
-# =========================
+
 def run(preselect_index: Optional[int]=None, cookie_path: Optional[str]=None, user_agent: Optional[str]=None, headless: bool=False):
     ensure_dirs()
     files = find_cookie_files()
