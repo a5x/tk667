@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 import tempfile
 import stat
-import datetime  # <-- ajouté
+import datetime
 
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
@@ -24,7 +24,7 @@ except Exception:
 APP_TITLE = "667 SCRAPER"
 APP_MIN_SIZE = (1024, 640)
 
-LOCAL_VERSION = "2.5"
+LOCAL_VERSION = "2.6"
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
@@ -1236,3 +1236,4 @@ class App(tk.Tk):
 if __name__ == "__main__":
     app = App()
     app.mainloop()
+
