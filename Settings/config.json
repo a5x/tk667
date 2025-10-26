@@ -1,6 +1,8 @@
 {
   "scrolls": 6,
-  "theme": "system",
+  "theme": "dark",
   "logo_png": "667.png",
-  "color_theme": "green"
+  "color_theme": "yellow",
+  "bg_image": "myname.jpg",
+  "console_preset": "amber"
 }
