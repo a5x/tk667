@@ -89,8 +89,8 @@ def run_a_live_until(desired, cumulative_set, cumulative_list):
                     write_urls(cumulative_list)
                     total = len(cumulative_list)
 
-                    if total >= desired:
-                        print(Fore.GREEN + f"Requiered Links ({total} >= {desired}). STOP, Starting b.py." + Style.RESET_ALL)
+                    if total >= (desired - 2):  # Marge d'erreur de 2 en dessous
+                        print(Fore.GREEN + f"Required Links ({total} good {desired}. STOP, Starting b.py." + Style.RESET_ALL)
                         try:
                             proc.terminate()
                         except Exception:
@@ -160,7 +160,7 @@ def main():
 
         ok, total = run_a_live_until(desired, cumulative_set, cumulative_list)
 
-        if total >= desired:
+        if total >= (desired - 2):  # Marge d'erreur de 2 en dessous
             run_b()
             return
 
