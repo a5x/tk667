@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import re
 
 
 def load_language():

@@ -135,6 +135,7 @@ def main():
     parser.add_argument("--no-clean", dest="no_clean", action="store_true", help="Do not delete existing output file before running.")
     args = parser.parse_args()
 
+
     print(Fore.MAGENTA + "====== Custom Scraper =====" + Style.RESET_ALL)
     desired = args.desired if (args.desired and args.desired >= 1) else None
     if desired is None:

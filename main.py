@@ -12,6 +12,7 @@ from pathlib import Path
 import tempfile
 import stat
 import datetime
+import re
 
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
@@ -60,9 +61,9 @@ translations = {
         "scraper_prompt": ">> ",
         "choose": "Choisissez : ",
         "bye": "Au revoir !",
-        "submenu_1_title": "=========== Choissisez une option ===========",
-        "submenu_2_title": "=========== Choissisez une option ===========",
-        "submenu_3_title": "=========== Paramètres ===========",
+        "submenu_1_title": "===========★ Choissisez une option ★===========",
+        "submenu_2_title": "===========★ Choissisez une option ★===========",
+        "submenu_3_title": "===========★ Paramètres ★===========",
         "btn_check_updates": "Vérifier les mises à jour",
         "lbl_console": "Console",
         "nav_home": "Accueil",
@@ -110,6 +111,7 @@ translations = {
             "color_charcoal": "Charbon",
             "color_peach": "Pêche",
             "color_cyan": "Cyan",
+            "color_dark": "Sombre",
         "color_saved": "Couleur appliquée.",
     "option_console_preset": "Couleur de la console",
     "console_preset_default": "Par défaut",
@@ -139,12 +141,14 @@ translations = {
         "status_disconnected": "Compte : non connecté",
         "status_for": "depuis",
         "credits_lines": [
-            "dev @enabIe idea from @repient RU translation s/O : @?????"
+            "dev @enabIe\n idea from @repient\n RU translation s/O : @akiimo alias @ftk1337"
         ],
         "changelogs_title": "Changelogs",
         "changelogs_lines": [
             "",
             "Changelogs :",
+            "2.6 : Modification de la position de l'interface Paramètres, Modif des traductions,.",
+            "2.5(.1 & .2) : Ajout de l'option Region Changer, Ajout de plusieurs couleurs UI, ajout de nouveaux logos, fix de bugs, Ajout de la traduction en Russe faite par un Russe, Ajout de la détection du compte tiktok connecté.",
             "2.4 : Fix updater (remplace main.py en premier, copie atomique, UI bloquée).",
             "2.3 : Couleurs d’interface (Bleu ciel, Bleu foncé, Rouge, Jaune, Vert, Rose, Orange, Violet).",
             "2.2 : Sélecteur thème console (clair/sombre).",
@@ -184,8 +188,8 @@ translations = {
         "scraper_prompt": ">> ",
         "choose": "Choose: ",
         "bye": "Goodbye!",
-        "submenu_1_title": "=========== Choose an option ===========",
-        "submenu_2_title": "=========== Choose an option ===========",
+        "submenu_1_title": "===========★ Options Selector ★===========",
+        "submenu_2_title": "===========★ Options Selector ★===========",
         "submenu_3_title": "=========== Settings ===========",
         "btn_check_updates": "Check for updates",
         "lbl_console": "Console",
@@ -234,6 +238,7 @@ translations = {
             "color_charcoal": "Charcoal",
             "color_peach": "Peach",
             "color_cyan": "Cyan",
+            "color_dark": "Dark",
         "color_saved": "Color applied.",
     "option_console_preset": "Console Color",
     "console_preset_default": "Default",
@@ -263,12 +268,14 @@ translations = {
         "status_for": "for",
         "credits_title": "Credits",
         "credits_lines": [
-            "dev @enabIe idea from @repient RU translation s/O : @?????"
+            "dev @enabIe\n idea from @repient\n RU translation s/O : @akiimo alias @ftk1337"
         ],
         "changelogs_title": "Changelogs",
         "changelogs_lines": [
             "",
             "Changelogs :",
+            "2.6 : Adjusted the position/layout of the Settings interface; updated translations.",
+            "2.5(.1 & .2) : Added Region Changer option, added several UI colors, added new logos, bug fixes, added Russian translation contributed by a Russian, added detection of the connected TikTok account.",
             "2.4 : Fix updater (replace main.py first, atomic copy, UI locked).",
             "2.3 : UI colors (Sky, Dark blue, Red, Yellow, Green, Pink, Orange, Violet).",
             "2.2 : Console theme selector (light/dark).",
@@ -285,7 +292,134 @@ translations = {
             "1.1 : Settings.",
             "1.0 : Initial."
         ],
-    }
+    },
+    "ru": {
+    "menu_title": "★ Новая версия {version} ★",
+    "option_1": "Запуск: (сбор профилей)",
+    "option_2": "Запуск: (проверка биографии для email)",
+    "option_3": "Запустить: Cкрипты cборa + email",
+    "option_4": "Скрапер хэштегов TikTok",
+    "option_v": "Скрап аккаунтов с синим значком",
+    "option_i": "Поиск информации TikTok",
+    "option_t": "Как использовать инструмент",
+    "option_cc": "Очистить файлы",
+    "option_c": "Сменить язык",
+    "option_s": "Настройки (количество прокруток)",
+    "option_l": "Список изменений",
+    "option_q": "Закрыть",
+    "option_create": "Создать личный скрапер хэштегов",
+    "panel_header": "Скрапер TikTok по хэштегу",
+    "panel_create_personal": "Создать личный",
+    "return_menu": "Назад в меню",
+    "invalid": "Неверная опция.",
+    "scraper_prompt": ">> ",
+    "choose": "Выберите: ",
+    "bye": "До свидания!",
+    "submenu_1_title": "===========★ Выберите опцию ★===========",
+    "submenu_2_title": "===========★ Выберите опцию ★===========",
+    "submenu_3_title": "===========★ Настройки ★===========",
+    "btn_check_updates": "Проверить обновления",
+    "lbl_console": "Консоль",
+    "nav_home": "Главная",
+    "nav_scraping": "Инструменты для скрапинга",
+    "nav_tiktok": "Инструменты TikTok",
+    "nav_settings": "Настройки",
+    "nav_changelog": "Список изменений",
+    "home_welcome": "Добро пожаловать! Выберите раздел в меню слева.",
+    "btn_send_telegram": "Отправить файл на Telegram",
+    "btn_infinite_report": "Бесконечный отчёт @ [НЕ ЗАВЕРШЕНО]",
+    "btn_convert_cookies": "Преобразовать cookies",
+    "btn_save": "Сохранить",
+    "tuto_title": "Обучение",
+    "not_found_title": "Не найдено",
+    "not_found_text": "Скрипт не существует: {path}",
+    "ok_title": "OK",
+    "saved_param": "Настройкa сохранeнa.",
+    "lang_title": "Язык",
+    "lang_changed": "Язык изменён. Некоторые надписи обновятся при следующем запуске.",
+    "ask_custom_scraper_title": "Личный скрапер",
+    "ask_custom_scraper_body": "Сколько ссылок ты хочешь?",
+    "option_theme": "Тема (консоль)",
+    "theme_system": "Системная",
+    "theme_light": "Светлая",
+    "theme_dark": "Тёмная",
+    "theme_saved": "Тема применена.",
+    "option_logo": "Логотип",
+    "logo_saved": "Логотип обновлён.",
+    "option_color": "Цвет (интерфейс)",
+    "color_sky": "Небесно-голубой",
+    "color_blue": "Тёмно-синий",
+    "color_red": "Красный",
+    "color_yellow": "Жёлтый",
+    "color_green": "Зелёный",
+    "color_pink": "Розовый",
+    "color_orange": "Оранжевый",
+    "color_violet": "Фиолетовый",
+    "color_teal": "Бирюзовый",
+    "color_purple": "Пурпурный",
+    "color_coral": "Коралловый",
+    "color_mint": "Мятный",
+    "color_navy": "Морской",
+    "color_lavender": "Лавандовый",
+    "color_gold": "Золотой",
+    "color_charcoal": "Угольный",
+    "color_peach": "Персиковый",
+    "color_cyan": "Циановый",
+    "color_dark": "Тёмный",
+    "color_saved": "Цвет применён.",
+    "option_console_preset": "Цвет консоли",
+    "console_preset_default": "По умолчанию",
+    "console_preset_green": "Зелёный на чёрном",
+    "console_preset_amber": "Янтарный на чёрном",
+    "console_preset_light": "Светлый",
+    "console_preset_pastel": "Пастельный",
+    "console_preset_night": "Ночная (мягкая)",
+    "console_preset_solar": "Cоляризованный",
+    "console_preset_pink": "Розовый на чёрном",
+    "console_preset_navy": "Морской на чёрном",
+    "console_preset_saved": "Цвет консоли примененный.",
+    "update_title": "Доступно обновление",
+    "update_text": "Доступна версия {latest} (текущая {current}).\n\nНажмите «Скачать и установить», чтобы обновить приложение.",
+    "btn_update_now": "Скачать и установить",
+    "status_checking": "Проверка…",
+    "status_downloading": "Загрузка… {pct}%",
+    "status_extracting": "Распаковка…",
+    "status_applying": "Применение обновления…",
+    "status_done": "Обновление завершено.",
+    "restart_prompt": "Обновление установлено. Перезапустить сейчас?",
+    "error_update": "Ошибка обновления: {err}",
+    "blocked_until_update": "Требуется обновление — действия отключены до установки.",
+    "nav_credits": "Авторы",
+    "credits_title": "Авторы",
+    "status_connected": "Подключено",
+    "status_disconnected": "Аккаунт: не подключён",
+    "status_for": "с",
+    "credits_lines": [
+        "разработка @enabIe\n, идея от @repient\n, перевод на русский: @akiimoo alias @ftk1337"
+    ],
+    "changelogs_title": "Список изменений",
+    "changelogs_lines": [
+        "",
+        "Изменения:",
+        "2.6 : Изменено расположение интерфейса настроек; обновлены переводы.",
+        "2.5(.1 & .2) : Добавлена опция Region Changer, добавлено несколько цветовых тем интерфейса, добавлены новые логотипы, исправлены ошибки, добавлен перевод на русский (выполнен русским), добавлено обнаружение подключённого аккаунта TikTok.",
+        "2.4: Исправить систему обновления (сначала замени main.py, автоматическое копирование, блокировка интерфейса).",
+        "2.3: Цвета интерфейса (небесно-голубой, тёмно-синий, красный, жёлтый, зелёный, розовый, оранжевый, фиолетовый).",
+        "2.2: Выбор темы консоли (светлая/тёмная).",
+        "2.1: Скрипт выбора количества аккаунтов.",
+        "2.0: Исправления и оптимизация.",
+        "1.9: Отправка файлов в Telegram.",
+        "1.8: Очистка + верифицированные аккаунты.",
+        "1.7: Личный скрапер хэштегов.",
+        "1.6: Скрапер хэштегов.",
+        "1.5: Рефакторинг кодов/скриптов.",
+        "1.4: Обновление интерфейса.",
+        "1.3: Цепь скриптов + информация TikTok.",
+        "1.2: Выбор языка.",
+        "1.1: Настройки.",
+        "1.0: Первая версия."
+    ]
+}
 }
 
 SETTINGS_DIR = Path("Settings")
@@ -570,8 +704,14 @@ class ProcessRunner:
                 return
         def reader():
             try:
+                success_re = re.compile(r"\[\+\]\s*Email\(s\)\s*(trouv|found)", re.IGNORECASE)
+
                 for line in self.proc.stdout:
-                    self.console_append(line)
+                    if success_re.search(line):
+                        self.console_append(line, color="green")   # vert pour email_found
+                    else:
+                        self.console_append(line)
+
             finally:
                 rc = self.proc.poll()
                 self.console_append(f"\n[Process terminé] Code: {rc}\n")
@@ -606,8 +746,8 @@ class App(tk.Tk):
             try:
                 img = PhotoImage(file=logo_path)
                 w, h = img.width(), img.height()
-                sx = max(1, int(w / 50)) if w > 50 else 1
-                sy = max(1, int(h / 50)) if h > 50 else 1
+                sx = max(1, int(w / 70)) if w > 70 else 1
+                sy = max(1, int(h / 70)) if h > 70 else 1
                 if sx > 1 or sy > 1:
                     img = img.subsample(sx, sy)
                 self._logo_small_ref = img
@@ -629,8 +769,9 @@ class App(tk.Tk):
         self.session_label = ttk.Label(center, textvariable=self.session_var, font=("Segoe UI", 11, "bold"))
         self.session_label.pack(anchor="center")
 
-        ttk.Button(top, text=translations[load_language()]["btn_check_updates"],
-                   command=lambda: check_update_gui(self, self.console_append)).pack(side=tk.RIGHT, padx=6)
+        self.btn_check_updates = ttk.Button(top, text=translations[load_language()]["btn_check_updates"],
+                   command=lambda: check_update_gui(self, self.console_append))
+        self.btn_check_updates.pack(side=tk.RIGHT, padx=6)
 
         body = ttk.Frame(self)
         body.pack(fill=tk.BOTH, expand=True)
@@ -644,28 +785,39 @@ class App(tk.Tk):
         self.content_left = ttk.Frame(self.content)
         self.content_left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        console_frame = ttk.LabelFrame(self, text=translations[load_language()]["lbl_console"])
-        console_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, padx=10, pady=8)
-        self.console = tk.Text(console_frame, height=12, wrap="word")
+        self.console_frame = ttk.LabelFrame(self, text=translations[load_language()]["lbl_console"])
+        self.console_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, padx=10, pady=8)
+        self.console = tk.Text(self.console_frame, height=12, wrap="word")
         self.console.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        sb = ttk.Scrollbar(console_frame, command=self.console.yview)
+        sb = ttk.Scrollbar(self.console_frame, command=self.console.yview)
         sb.pack(side=tk.RIGHT, fill=tk.Y)
         self.console.configure(yscrollcommand=sb.set)
 
         self.runner = ProcessRunner(self.console_append)
 
-        ttk.Button(nav, text=translations[load_language()]["nav_home"], command=self.show_home).pack(fill=tk.X, padx=6, pady=4)
-        ttk.Button(nav, text=translations[load_language()]["nav_scraping"], command=self.show_scraping).pack(fill=tk.X, padx=6, pady=4)
-        ttk.Button(nav, text=translations[load_language()]["nav_tiktok"], command=self.show_tiktok).pack(fill=tk.X, padx=6, pady=4)
-        ttk.Button(nav, text=translations[load_language()]["nav_settings"], command=self.show_settings).pack(fill=tk.X, padx=6, pady=4)
-        ttk.Button(nav, text=translations[load_language()]["nav_changelog"], command=self.show_changelog).pack(fill=tk.X, padx=6, pady=4)
-        ttk.Button(nav, text=translations[load_language()]["nav_credits"], command=self.show_credits).pack(fill=tk.X, padx=6, pady=4)
+        self.btn_nav_home = ttk.Button(nav, text=translations[load_language()]["nav_home"], command=self.show_home)
+        self.btn_nav_home.pack(fill=tk.X, padx=6, pady=4)
+        self.btn_nav_scraping = ttk.Button(nav, text=translations[load_language()]["nav_scraping"], command=self.show_scraping)
+        self.btn_nav_scraping.pack(fill=tk.X, padx=6, pady=4)
+        self.btn_nav_tiktok = ttk.Button(nav, text=translations[load_language()]["nav_tiktok"], command=self.show_tiktok)
+        self.btn_nav_tiktok.pack(fill=tk.X, padx=6, pady=4)
+        self.btn_nav_settings = ttk.Button(nav, text=translations[load_language()]["nav_settings"], command=self.show_settings)
+        self.btn_nav_settings.pack(fill=tk.X, padx=6, pady=4)
+        self.btn_nav_changelog = ttk.Button(nav, text=translations[load_language()]["nav_changelog"], command=self.show_changelog)
+        self.btn_nav_changelog.pack(fill=tk.X, padx=6, pady=4)
+        self.btn_nav_credits = ttk.Button(nav, text=translations[load_language()]["nav_credits"], command=self.show_credits)
+        self.btn_nav_credits.pack(fill=tk.X, padx=6, pady=4)
 
         ttk.Button(nav, text="Region Changer", command=self.show_region_changer).pack(fill=tk.X, padx=6, pady=4)
 
         self.apply_color_theme(self.current_color)
 
         self._reset_session_status_on_start()
+
+        try:
+            self._refresh_ui_texts()
+        except Exception:
+            pass
 
         self.show_home()
         self.after(800, lambda: check_update_gui(self, self.console_append))
@@ -680,6 +832,47 @@ class App(tk.Tk):
             self.session_var.set(translations[load_language()]["status_disconnected"])
             try: self.session_dot.configure(foreground="#c0392b")
             except Exception: pass
+        except Exception:
+            pass
+
+
+    def _refresh_ui_texts(self):
+        """Update texts of main UI elements (nav buttons, check updates, console label, session badge).
+        Call this after changing language to reflect new translations immediately.
+        """
+        try:
+            lang = load_language()
+            t = translations.get(lang, translations["fr"]) if isinstance(translations, dict) else translations["fr"]
+        except Exception:
+            t = translations["fr"]
+
+        try:
+            if getattr(self, 'btn_check_updates', None):
+                self.btn_check_updates.config(text=t.get('btn_check_updates', self.btn_check_updates.cget('text')))
+        except Exception:
+            pass
+
+        try:
+            for attr, key in (
+                ('btn_nav_home', 'nav_home'), ('btn_nav_scraping', 'nav_scraping'),
+                ('btn_nav_tiktok', 'nav_tiktok'), ('btn_nav_settings', 'nav_settings'),
+                ('btn_nav_changelog', 'nav_changelog'), ('btn_nav_credits', 'nav_credits'),
+            ):
+                btn = getattr(self, attr, None)
+                if btn:
+                    btn.config(text=t.get(key, btn.cget('text')))
+        except Exception:
+            pass
+
+        try:
+            if getattr(self, 'console_frame', None):
+                self.console_frame.config(text=t.get('lbl_console', self.console_frame.cget('text')))
+        except Exception:
+            pass
+
+        try:
+            # refresh the session badge text immediately
+            self._refresh_session_badge()
         except Exception:
             pass
 
@@ -740,10 +933,9 @@ class App(tk.Tk):
             "red":    {"accent": "#D94343", "accent_fg": "#ffffff", "bg": "#F8F3F3"},
             "yellow": {"accent": "#E0B000", "accent_fg": "#111111", "bg": "#F8F6EE"},
             "pink":   {"accent": "#C671CE", "accent_fg": "#ffffff", "bg": "#FFF6FB"},
-                "orange": {"accent": "#F57C00", "accent_fg": "#ffffff", "bg": "#FFF7ED"},
-                "violet": {"accent": "#6A1B9A", "accent_fg": "#ffffff", "bg": "#F6F0FB"},
+            "orange": {"accent": "#F57C00", "accent_fg": "#ffffff", "bg": "#FFF7ED"},
+            "violet": {"accent": "#6A1B9A", "accent_fg": "#ffffff", "bg": "#F6F0FB"},
             "green":  {"accent": "#2E7D32", "accent_fg": "#ffffff", "bg": "#F1F7F2"},
-            # additional themes
             "teal":   {"accent": "#009688", "accent_fg": "#ffffff", "bg": "#F0FBFA"},
             "purple": {"accent": "#7B1FA2", "accent_fg": "#ffffff", "bg": "#FBF0FD"},
             "coral":  {"accent": "#FF6F61", "accent_fg": "#ffffff", "bg": "#FFF4F2"},
@@ -754,6 +946,7 @@ class App(tk.Tk):
             "charcoal": {"accent": "#34495E", "accent_fg": "#ffffff", "bg": "#F3F5F7"},
             "peach":  {"accent": "#FFB07C", "accent_fg": "#111111", "bg": "#FFF8F3"},
             "cyan":   {"accent": "#00BCD4", "accent_fg": "#ffffff", "bg": "#F2FDFF"},
+            "dark":   {"accent": "#413f3f", "accent_fg": "#ffffff", "bg": "#413f3f"},
         }
         if name not in palette:
             name = "sky"
@@ -825,13 +1018,29 @@ class App(tk.Tk):
         except Exception:
             pass
 
-    def console_append(self, text: str):
+    def console_append(self, text: str, color: str = None):
+    # créer les tags une seule fois
+        if not hasattr(self, "_console_tags_inited"):
+            try:
+                self.console.tag_configure("green",  foreground="#21c55d")  # vert
+                self.console.tag_configure("red",    foreground="#ef4444")  # rouge
+                self.console.tag_configure("yellow", foreground="#f59e0b")  # jaune
+            except Exception:
+                pass
+            self._console_tags_inited = True
+
         self.console.configure(state=tk.NORMAL)
-        self.console.insert(tk.END, text)
+        if color:
+            self.console.insert(tk.END, text, color)
+        else:
+            self.console.insert(tk.END, text)
         self.console.see(tk.END)
         self.console.configure(state=tk.NORMAL)
 
+
+
     def refresh_logo(self):
+        """Recharge le logo depuis Settings et l’affiche directement à taille max 70 px."""
         from tkinter import PhotoImage
         self._logo_img = None
         logo_path = get_logo_path_from_config()
@@ -841,24 +1050,41 @@ class App(tk.Tk):
             self.logo_label.configure(image="", text="")
         except Exception:
             pass
+
         if not logo_path:
             try:
                 self.logo_label.configure(text="667 SCRAPER")
             except Exception:
                 pass
             return
+
         try:
             img = PhotoImage(file=logo_path)
             w, h = img.width(), img.height()
-            max_w, max_h = 260, 260
-            sx = max(1, (w + max_w - 1) // max_w) if w > max_w else 1
-            sy = max(1, (h + max_h - 1) // max_h) if h > max_h else 1
+            max_size = 70
+            sx = max(1, int(w / max_size)) if w > max_size else 1
+            sy = max(1, int(h / max_size)) if h > max_size else 1
             if sx > 1 or sy > 1:
-                img = img.subsample(sx, sy)
+                img = img.subsample(max(sx, sy))
             self._logo_img = img
             self.logo_label.configure(image=self._logo_img, text="")
+        except Exception as e:
+            self.logo_label.configure(text=f"Logo invalide: {e}")
+
+    def _save_logo_png(self, filename: str):
+        cfg = load_config()
+        if filename:
+            cfg["logo_png"] = filename
+        else:
+            cfg.pop("logo_png", None)
+        save_config(cfg)
+        messagebox.showinfo(translations[load_language()]["ok_title"],
+                            translations[load_language()]["logo_saved"])
+        try:
+            self.refresh_logo()
         except Exception:
-            self.logo_label.configure(text=str(logo_path))
+            pass
+
 
     def clear_content(self):
         for w in self.content_left.winfo_children():
@@ -964,33 +1190,36 @@ class App(tk.Tk):
     def show_settings(self):
         self.clear_content()
         outer = ttk.Frame(self.content_left); outer.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
-        frm = ttk.Frame(outer); frm.pack(expand=True, anchor="w")
+        # place a centered container so the settings panel appears centered in the window
+        center = ttk.Frame(outer)
+        center.place(relx=0.5, rely=0.02, anchor="n")
+        frm = ttk.Frame(center); frm.pack()
         lang = load_language(); t = translations.get(lang, translations["fr"])
-        ttk.Label(frm, text=t["submenu_3_title"], font=("Segoe UI", 14, "bold")).pack(anchor="w")
+        ttk.Label(frm, text=t["submenu_3_title"], font=("Segoe UI", 14, "bold")).pack(anchor="center")
 
         cfg = load_config()
 
-        row1 = ttk.Frame(frm); row1.pack(anchor="w", pady=8)
+        row1 = ttk.Frame(frm); row1.pack(anchor="center", pady=8)
         ttk.Label(row1, text=t["option_s"]).pack(side=tk.LEFT)
         scroll_var = tk.IntVar(value=int(cfg.get("scrolls", 10)))
         ttk.Spinbox(row1, from_=1, to=10000, width=8, textvariable=scroll_var).pack(side=tk.LEFT, padx=8)
         ttk.Button(row1, text=translations[load_language()]["btn_save"], command=lambda: self._save_scrolls(scroll_var.get())).pack(side=tk.LEFT)
 
-        row2 = ttk.Frame(frm); row2.pack(anchor="w", pady=8)
+        row2 = ttk.Frame(frm); row2.pack(anchor="center", pady=8)
         ttk.Label(row2, text=t["option_c"]).pack(side=tk.LEFT)
         lang_var = tk.StringVar(value=lang)
-        for code, label in [("fr", "Français"), ("en", "English")]:
+        for code, label in [("fr", "Français"), ("en", "English"), ("ru", "Russian")]:
             ttk.Radiobutton(row2, text=label, value=code, variable=lang_var, command=lambda lv=lang_var: self._change_lang(lv.get())).pack(side=tk.LEFT, padx=6)
 
 
-        row4 = ttk.Frame(frm); row4.pack(anchor="w", pady=8)
+        row4 = ttk.Frame(frm); row4.pack(anchor="center", pady=8)
         ttk.Label(row4, text=t["option_color"]).pack(side=tk.LEFT)
         color_labels = [
             t["color_sky"], t["color_blue"], t["color_red"], t["color_yellow"],
             t["color_pink"], t["color_orange"], t["color_violet"], t["color_green"],
             t["color_teal"], t["color_purple"], t["color_coral"], t["color_mint"],
             t["color_navy"], t["color_lavender"], t["color_gold"], t["color_charcoal"],
-            t["color_peach"], t["color_cyan"],
+            t["color_peach"], t["color_cyan"], t["color_dark"], 
         ]
         color_map = {
             t["color_sky"]: "sky",
@@ -1011,19 +1240,20 @@ class App(tk.Tk):
             t["color_charcoal"]: "charcoal",
             t["color_peach"]: "peach",
             t["color_cyan"]: "cyan",
+            t["color_dark"]: "dark",
         }
         inv_color_map = {v: k for k, v in color_map.items()}
         color_var = tk.StringVar(value=inv_color_map.get(cfg.get("color_theme","sky"), t["color_sky"]))
         ttk.Combobox(row4, textvariable=color_var, values=color_labels, width=16, state="readonly").pack(side=tk.LEFT, padx=8)
         ttk.Button(row4, text=translations[load_language()]["btn_save"], command=lambda: self._save_color_theme(color_map[color_var.get()])).pack(side=tk.LEFT)
 
-        row4b = ttk.Frame(frm); row4b.pack(anchor="w", pady=8)
+        row4b = ttk.Frame(frm); row4b.pack(anchor="center", pady=8)
         ttk.Label(row4b, text=t["option_console_preset"]).pack(side=tk.LEFT)
         preset_labels = [
             t["console_preset_default"], t["console_preset_green"], t["console_preset_amber"], t["console_preset_light"],
             t.get("console_preset_pastel", "Pastel"), t.get("console_preset_night", "Night (soft)"),
             t.get("console_preset_solar", "Solarized"), t.get("console_preset_pink", "Pink on black"),
-            t.get("console_preset_navy", "Navy on black"),
+            t.get("console_preset_navy", "Navy on black"), t.get("console_preset_dark", "Dark Mode"),
         ]
         preset_map = {
             t["console_preset_default"]: "default",
@@ -1035,20 +1265,21 @@ class App(tk.Tk):
             t.get("console_preset_solar", "Solarized"): "solar",
             t.get("console_preset_pink", "Pink on black"): "pink",
             t.get("console_preset_navy", "Navy on black"): "navy",
+            t.get("console_preset_dark", "Dark Mode"): "dark",
         }
         inv_preset_map = {v: k for k, v in preset_map.items()}
         console_preset_var = tk.StringVar(value=inv_preset_map.get(cfg.get("console_preset","default"), t["console_preset_default"]))
         ttk.Combobox(row4b, textvariable=console_preset_var, values=preset_labels, width=18, state="readonly").pack(side=tk.LEFT, padx=8)
         ttk.Button(row4b, text=translations[load_language()]["btn_save"], command=lambda: self._save_console_preset(preset_map[console_preset_var.get()])).pack(side=tk.LEFT)
 
-        row5 = ttk.Frame(frm); row5.pack(anchor="w", pady=8)
+        row5 = ttk.Frame(frm); row5.pack(anchor="center", pady=8)
         ttk.Label(row5, text=t["option_logo"]).pack(side=tk.LEFT)
         pngs = list_settings_pngs()
         logo_var = tk.StringVar(value=cfg.get("logo_png", ""))
         ttk.Combobox(row5, textvariable=logo_var, values=pngs, state="readonly", width=28).pack(side=tk.LEFT, padx=8)
         ttk.Button(row5, text=translations[load_language()]["btn_save"], command=lambda: self._save_logo_png(logo_var.get())).pack(side=tk.LEFT)
 
-        ttk.Button(frm, text=t["option_l"], command=self.show_changelog).pack(anchor="w", pady=(10,0))
+        ttk.Button(frm, text=t["option_l"], command=self.show_changelog).pack(anchor="center", pady=(10,0))
 
     def show_changelog(self):
         self.clear_content()
@@ -1066,7 +1297,7 @@ class App(tk.Tk):
         lang = load_language(); t = translations.get(lang, translations["fr"])
         ttk.Label(frm, text=t.get("credits_title", "Credits"), font=("Segoe UI", 14, "bold")).pack(anchor="w")
         txt = tk.Text(frm, height=8, wrap="word"); txt.pack(fill=tk.BOTH, expand=True)
-        lines = t.get("credits_lines", ["dev @enabIe idea from @repient RU translation s/O : @?????"])
+        lines = t.get("credits_lines", ["dev @enabIe\n idea from @repient\n RU translation s/O : @akiimo alias @ftk1337"])
         txt.insert("1.0", "\n".join(lines))
         txt.configure(state=tk.DISABLED)
 
@@ -1143,6 +1374,11 @@ class App(tk.Tk):
 
     def _change_lang(self, lang_code: str):
         save_language(lang_code)
+        # refresh visible UI texts immediately
+        try:
+            self._refresh_ui_texts()
+        except Exception:
+            pass
         messagebox.showinfo(translations[load_language()]["lang_title"], translations[load_language()]["lang_changed"])
 
     def _save_logo_png(self, filename: str):
@@ -1209,7 +1445,6 @@ class App(tk.Tk):
         files = sorted(dict.fromkeys(files))
         return files
     
-    # --- À ajouter dans la classe App ---
     def _rc_refresh_list(self):
         self.rc_listbox.delete(0, tk.END)
         files = self._rc_cookie_files()
@@ -1308,8 +1543,4 @@ class App(tk.Tk):
 if __name__ == "__main__":
     app = App()
     app.mainloop()
-
-
-
-
 

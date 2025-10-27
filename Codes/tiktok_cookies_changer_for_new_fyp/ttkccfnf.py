@@ -31,7 +31,7 @@ def ensure_dirs():
 def find_cookie_files() -> List[str]:
     if not os.path.isdir(COOKIE_DIR):
         return []
-    patterns = ["frenchacc_*.json","frenchacc_*.txt","*.json","*.txt"]
+    patterns = ["frenchacc_*.json","frenchacc_*.txt", "usacc_*.txt", "usacc_*.json", "beacc_*.json","beacc_*.txt","*.json","*.txt"]
     files = []
     for p in patterns:
         files.extend(glob.glob(os.path.join(COOKIE_DIR, p)))
@@ -228,6 +228,7 @@ def build_driver(headless: bool=False, user_agent: Optional[str]=None):
     opts = Options()
     if headless:
         opts.add_argument("--headless=new")
+    opts.add_argument("--headless")
     opts.add_argument("--disable-gpu")
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
@@ -382,7 +383,7 @@ def collect_profiles_with_driver(driver, desired_links: int) -> List[str]:
     collected, seen = [], set()
     try:
         driver.get("https://www.tiktok.com/explore")
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME,"body")))
+        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.TAG_NAME,"body")))
         time.sleep(0.6)
     except Exception:
         pass
@@ -512,7 +513,7 @@ def run_selenium(converted_path: str, user_agent: Optional[str], headless: bool)
             threading.Thread(target=ticker, daemon=True).start()
 
         if connected:
-            time.sleep(10)
+            time.sleep(5)
             desired = ask_number_with_tk(initial=10)
             if desired is not None:
                 _ = collect_profiles_with_driver(driver, desired_links=desired)
@@ -521,9 +522,22 @@ def run_selenium(converted_path: str, user_agent: Optional[str], headless: bool)
                     b_path = "b.py"
                 if os.path.exists(b_path):
                     try:
+                        # run b.py (blocking)
                         subprocess.run([sys.executable, b_path], check=False)
                     except Exception:
                         pass
+
+                    # *** NEW: fermer automatiquement la page Selenium une fois b.py terminé ***
+                    try:
+                        mark_disconnected()
+                    except Exception:
+                        pass
+                    try:
+                        driver.quit()
+                    except Exception:
+                        pass
+                    # sortir de la fonction pour éviter la boucle qui attend la fermeture manuelle
+                    return
 
         try:
             while True:
@@ -539,6 +553,7 @@ def run_selenium(converted_path: str, user_agent: Optional[str], headless: bool)
             driver.quit()
         except Exception:
             pass
+
 
 
 def run(preselect_index: Optional[int]=None, cookie_path: Optional[str]=None, user_agent: Optional[str]=None, headless: bool=False):
