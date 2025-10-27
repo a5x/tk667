@@ -24,7 +24,7 @@ except Exception:
 APP_TITLE = "667 SCRAPER"
 APP_MIN_SIZE = (1024, 640)
 
-LOCAL_VERSION = "2.5.1"
+LOCAL_VERSION = "2.5.2"
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
@@ -292,7 +292,7 @@ SETTINGS_DIR = Path("Settings")
 SETTINGS_DIR.mkdir(exist_ok=True)
 LANG_FILE = SETTINGS_DIR / "lang_config.json"
 CONFIG_FILE = SETTINGS_DIR / "config.json"
-SESSION_STATUS_FILE = SETTINGS_DIR / "session_status.json"  # <-- ajouté
+SESSION_STATUS_FILE = SETTINGS_DIR / "session_status.json"
 
 def load_language() -> str:
     if LANG_FILE.exists():
@@ -1208,13 +1208,18 @@ class App(tk.Tk):
             files.extend(glob.glob(os.path.join(search_dir, p)))
         files = sorted(dict.fromkeys(files))
         return files
-
+    
+    # --- À ajouter dans la classe App ---
     def _rc_refresh_list(self):
         self.rc_listbox.delete(0, tk.END)
         files = self._rc_cookie_files()
         if not files:
             self.rc_listbox.insert(tk.END, "(no cookie files found in acc/cookies/)")
             return
+        for f in files:
+            self.rc_listbox.insert(tk.END, os.path.basename(f))
+
+    def _rc_launch_selected(self):
         idx = self.rc_listbox.curselection()
         if not idx:
             messagebox.showerror("Selection requise", "Choisir un fichier cookie dans la liste.")
@@ -1273,9 +1278,8 @@ class App(tk.Tk):
         except Exception as e:
             self.console_append(f"Impossible d'envoyer la sélection au script: {e}\n")
 
-        # ping le badge pendant/à la fin du script (ajouté)
         def ping_refresh():
-            for _ in range(15):  # ~30s (2s * 15)
+            for _ in range(15):
                 if proc.poll() is not None:
                     break
                 try:
