@@ -25,7 +25,7 @@ except Exception:
 APP_TITLE = "667 SCRAPER"
 APP_MIN_SIZE = (1024, 640)
 
-LOCAL_VERSION = "2.5.2"
+LOCAL_VERSION = "2.6"
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
@@ -147,7 +147,7 @@ translations = {
         "changelogs_lines": [
             "",
             "Changelogs :",
-            "2.6 : Modification de la position de l'interface Paramètres, Modif des traductions,.",
+            "2.6 : Modification de la position de l'interface Paramètres, Modif des traductions, Modif de la console pour les couleurs.",
             "2.5(.1 & .2) : Ajout de l'option Region Changer, Ajout de plusieurs couleurs UI, ajout de nouveaux logos, fix de bugs, Ajout de la traduction en Russe faite par un Russe, Ajout de la détection du compte tiktok connecté.",
             "2.4 : Fix updater (remplace main.py en premier, copie atomique, UI bloquée).",
             "2.3 : Couleurs d’interface (Bleu ciel, Bleu foncé, Rouge, Jaune, Vert, Rose, Orange, Violet).",
@@ -1018,24 +1018,44 @@ class App(tk.Tk):
         except Exception:
             pass
 
-    def console_append(self, text: str, color: str = None):
-    # créer les tags une seule fois
+    def console_append(self, text: str):
+        import re
         if not hasattr(self, "_console_tags_inited"):
-            try:
-                self.console.tag_configure("green",  foreground="#21c55d")  # vert
-                self.console.tag_configure("red",    foreground="#ef4444")  # rouge
-                self.console.tag_configure("yellow", foreground="#f59e0b")  # jaune
-            except Exception:
-                pass
+            self.console.tag_configure("green",  foreground="#21c55d")
+            self.console.tag_configure("red",    foreground="#ef4444")
+            self.console.tag_configure("yellow", foreground="#f59e0b")
             self._console_tags_inited = True
 
-        self.console.configure(state=tk.NORMAL)
-        if color:
-            self.console.insert(tk.END, text, color)
-        else:
-            self.console.insert(tk.END, text)
-        self.console.see(tk.END)
-        self.console.configure(state=tk.NORMAL)
+        SUCCESS_RE = re.compile(r"\[\+\]\s*Email\(s\)\s*(?:trouv|found)", re.IGNORECASE)
+        ERROR_RE   = re.compile(r"^\s*\[\s*[×x]\s*\]")
+        WARN_RE    = re.compile(r"^\s*\[\-\]")
+
+        ANSI = re.compile(r"\x1b\[[0-9;]*m")
+        lines = text.splitlines(keepends=True)
+
+        self.console.configure(state="normal")
+        for ln in lines:
+            clean = ANSI.sub("", ln)
+
+            tag = None
+            if SUCCESS_RE.search(clean):
+                tag = "green"
+            elif ERROR_RE.search(clean):
+                    tag = "red"
+            elif WARN_RE.search(clean):
+                tag = "yellow"
+
+            if tag:
+                start = self.console.index("end-1c")
+                self.console.insert("end", clean)
+                end = self.console.index("end-1c")
+                self.console.tag_add(tag, start, end)
+            else:
+                self.console.insert("end", clean)
+
+        self.console.see("end")
+        self.console.configure(state="normal")
+
 
 
 
