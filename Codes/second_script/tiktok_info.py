@@ -36,9 +36,7 @@ def display_banner():
     sep = "=" * 150
     print(Fore.WHITE + sep)
     print(
-        Fore.GREEN + "  s/O Le Z t.me/@enabIe " +
-        Fore.WHITE + "                                             TikTok Info Finder  " +
-        Fore.GREEN + "                                                 idea from @repient"
+        Fore.GREEN + "  s/O Le Z t.me/@enabIe "
     )
     print(Fore.WHITE + sep + "\n")
 

@@ -25,7 +25,7 @@ except Exception:
 APP_TITLE = "667 SCRAPER"
 APP_MIN_SIZE = (1024, 640)
 
-LOCAL_VERSION = "2.6"
+LOCAL_VERSION = "2.7"
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
@@ -68,7 +68,7 @@ translations = {
         "lbl_console": "Console",
         "nav_home": "Accueil",
         "nav_scraping": "Scraping Tools",
-        "nav_tiktok": "TikTok Tools",
+        "nav_tiktok": "Autre Tools",
         "nav_settings": "Paramètres",
         "nav_changelog": "Changelogs",
         "home_welcome": "Bienvenue ! Choisissez une section dans le menu de gauche.",
@@ -106,12 +106,15 @@ translations = {
             "color_coral": "Corail",
             "color_mint": "Menthe",
             "color_navy": "Marine",
+            "color_test": "Candy",
             "color_lavender": "Lavande",
             "color_gold": "Doré",
             "color_charcoal": "Charbon",
             "color_peach": "Pêche",
             "color_cyan": "Cyan",
             "color_dark": "Sombre",
+            "color_fullypink": "Rose complet",
+            "color_candy": "Candy",
         "color_saved": "Couleur appliquée.",
     "option_console_preset": "Couleur de la console",
     "console_preset_default": "Par défaut",
@@ -165,6 +168,10 @@ translations = {
             "1.1 : Paramètres.",
             "1.0 : Initial."
         ],
+    # Tip shown when opening Report / Region Changer to explain cookie usage
+    "cookies_tip_title": "Conseil cookies",
+    "cookies_tip_message": "Placer vos cookies dans le fichier acc/cookies/frenchacc_1.txt.\nPour récupérer TOUS les vrais cookies, utilisez l'extension Edit This Cookies V3 et copiez le contenu dans ce fichier.",
+    "cookies_tip_do_not_show": "Ne plus afficher ce message",
     },
     "en": {
     "menu_title": "★ New Release {version} ★",
@@ -195,7 +202,7 @@ translations = {
         "lbl_console": "Console",
         "nav_home": "Home",
         "nav_scraping": "Scraping Tools",
-        "nav_tiktok": "TikTok Tools",
+        "nav_tiktok": "Utility Tools",
         "nav_settings": "Settings",
         "nav_changelog": "Changelogs",
         "home_welcome": "Welcome! Pick a section from the left menu.",
@@ -233,12 +240,15 @@ translations = {
             "color_coral": "Coral",
             "color_mint": "Mint",
             "color_navy": "Navy",
+            "color_test": "Candy",
             "color_lavender": "Lavender",
             "color_gold": "Gold",
             "color_charcoal": "Charcoal",
             "color_peach": "Peach",
             "color_cyan": "Cyan",
             "color_dark": "Dark",
+            "color_fullypink": "Fully Pink",
+            "color_candy": "Candy",
         "color_saved": "Color applied.",
     "option_console_preset": "Console Color",
     "console_preset_default": "Default",
@@ -292,6 +302,9 @@ translations = {
             "1.1 : Settings.",
             "1.0 : Initial."
         ],
+        "cookies_tip_title": "Cookies tip",
+        "cookies_tip_message": "Put your cookies into acc/cookies/frenchacc_1.txt. To get ALL the real cookies use the Edit This Cookies V3 extension and paste the content into that file.",
+        "cookies_tip_do_not_show": "Do not show this again",
     },
     "ru": {
     "menu_title": "★ Новая версия {version} ★",
@@ -366,6 +379,9 @@ translations = {
     "color_peach": "Персиковый",
     "color_cyan": "Циановый",
     "color_dark": "Тёмный",
+    "color_test": "Тёмный",
+    "color_fullypink": "Fully Pink",
+    "color_candy": "Candy",
     "color_saved": "Цвет применён.",
     "option_console_preset": "Цвет консоли",
     "console_preset_default": "По умолчанию",
@@ -418,8 +434,11 @@ translations = {
         "1.2: Выбор языка.",
         "1.1: Настройки.",
         "1.0: Первая версия."
-    ]
-}
+        ],
+        "cookies_tip_title": "Совет по cookies",
+        "cookies_tip_message": "Поместите ваши cookies в файл acc/cookies/frenchacc_1.txt. Чтобы получить ВСЕ настоящие cookies, используйте расширение Edit This Cookies V3 и вставьте содержимое в этот файл.",
+        "cookies_tip_do_not_show": "Больше не показывать это сообщение",
+    }
 }
 
 SETTINGS_DIR = Path("Settings")
@@ -688,7 +707,7 @@ class ProcessRunner:
         self.proc = None
         self.console_append = console_append
         self.lock = threading.Lock()
-    def run(self, cmd, cwd=None):
+    def run(self, cmd, cwd=None, on_start=None, on_complete=None):
         with self.lock:
             if self.proc and self.proc.poll() is None:
                 self.console_append("Un script est déjà en cours.\n")
@@ -699,6 +718,12 @@ class ProcessRunner:
                     cmd, cwd=cwd, stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT, text=True, bufsize=1
                 )
+                # notify caller the process started
+                try:
+                    if on_start:
+                        on_start()
+                except Exception:
+                    pass
             except FileNotFoundError:
                 self.console_append("Python ou le script est introuvable.\n")
                 return
@@ -714,6 +739,11 @@ class ProcessRunner:
 
             finally:
                 rc = self.proc.poll()
+                try:
+                    if on_complete:
+                        on_complete(rc)
+                except Exception:
+                    pass
                 self.console_append(f"\n[Process terminé] Code: {rc}\n")
         threading.Thread(target=reader, daemon=True).start()
 
@@ -801,6 +831,8 @@ class App(tk.Tk):
         self.btn_nav_scraping.pack(fill=tk.X, padx=6, pady=4)
         self.btn_nav_tiktok = ttk.Button(nav, text=translations[load_language()]["nav_tiktok"], command=self.show_tiktok)
         self.btn_nav_tiktok.pack(fill=tk.X, padx=6, pady=4)
+        ttk.Button(nav, text="Region Changer ", command=self.show_region_changer).pack(fill=tk.X, padx=6, pady=4)
+        ttk.Button(nav, text="Report", command=self.show_report).pack(fill=tk.X, padx=6, pady=4)
         self.btn_nav_settings = ttk.Button(nav, text=translations[load_language()]["nav_settings"], command=self.show_settings)
         self.btn_nav_settings.pack(fill=tk.X, padx=6, pady=4)
         self.btn_nav_changelog = ttk.Button(nav, text=translations[load_language()]["nav_changelog"], command=self.show_changelog)
@@ -808,7 +840,12 @@ class App(tk.Tk):
         self.btn_nav_credits = ttk.Button(nav, text=translations[load_language()]["nav_credits"], command=self.show_credits)
         self.btn_nav_credits.pack(fill=tk.X, padx=6, pady=4)
 
-        ttk.Button(nav, text="Region Changer", command=self.show_region_changer).pack(fill=tk.X, padx=6, pady=4)
+
+        self.console_frame = ttk.LabelFrame(self, text=translations[load_language()]["lbl_console"])
+
+        self.processing_var = tk.StringVar(value="✅ Ready")
+        self.processing_label = ttk.Label(self, textvariable=self.processing_var, font=("Segoe UI", 10, "bold"), foreground="#27ae60")
+        self.processing_label.pack(side=tk.BOTTOM, pady=(0, 2))
 
         self.apply_color_theme(self.current_color)
 
@@ -832,6 +869,22 @@ class App(tk.Tk):
             self.session_var.set(translations[load_language()]["status_disconnected"])
             try: self.session_dot.configure(foreground="#c0392b")
             except Exception: pass
+        except Exception:
+            pass
+
+    def _set_processing(self, busy: bool):
+        """Update the small status label showing processing state.
+        busy=True -> show '⏳ Processing...' (orange), busy=False -> '✅ Ready' (green)
+        """
+        try:
+            if busy:
+                self.processing_var.set("⏳ Processing...")
+                try: self.processing_label.configure(foreground="#d97706")
+                except Exception: pass
+            else:
+                self.processing_var.set("✅ Ready")
+                try: self.processing_label.configure(foreground="#27ae60")
+                except Exception: pass
         except Exception:
             pass
 
@@ -909,6 +962,7 @@ class App(tk.Tk):
                     "solar": {"bg": "#002b36", "fg": "#839496", "insert": "#b58900"},
                     "pink": {"bg": "#0b0010", "fg": "#ff9ec9", "insert": "#ff9ec9"},
                     "navy": {"bg": "#00122b", "fg": "#9fd3ff", "insert": "#9fd3ff"},
+                    "Candy": {"bg": "#e4759f", "fg": "#080808", "insert": "#000000"},
                 }
                 p = presets.get(preset)
                 if p:
@@ -947,6 +1001,8 @@ class App(tk.Tk):
             "peach":  {"accent": "#FFB07C", "accent_fg": "#111111", "bg": "#FFF8F3"},
             "cyan":   {"accent": "#00BCD4", "accent_fg": "#ffffff", "bg": "#F2FDFF"},
             "dark":   {"accent": "#413f3f", "accent_fg": "#ffffff", "bg": "#413f3f"},
+            "Fully Pink":   {"accent": "#ffffff", "accent_fg": "#000000", "bg": "#f7d3f7"},
+            "Candy":   {"accent": "#ffffff", "accent_fg": "#000000", "bg": "#e4759f"},
         }
         if name not in palette:
             name = "sky"
@@ -1202,10 +1258,8 @@ class App(tk.Tk):
         ttk.Label(frm, text=t["submenu_2_title"], font=("Segoe UI", 14, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 8))
         ttk.Button(frm, text=t["option_t"], command=self.show_tuto).grid(row=1, column=0, sticky="w", pady=4)
         ttk.Button(frm, text=translations[load_language()]["btn_send_telegram"], command=lambda: self.run_script("Codes/second_script/telegram_sender.py")).grid(row=2, column=0, sticky="w", pady=4)
-        ttk.Button(frm, text=translations[load_language()]["btn_infinite_report"], command=lambda: self.run_script("Codes/second_script/tiktok_info.py")).grid(row=3, column=0, sticky="w", pady=4)
-        ttk.Button(frm, text=t["option_cc"], command=lambda: self.run_script("Codes/second_script/cleaner.py")).grid(row=4, column=0, sticky="w", pady=4)
-        ttk.Button(frm, text=translations[load_language()]["btn_convert_cookies"], command=lambda: self.run_script("Codes/second_script/cc.py")).grid(row=5, column=0, sticky="w", pady=4)
-        ttk.Button(frm, text=t["return_menu"], command=self.show_home).grid(row=6, column=0, pady=(12,0), sticky="w")
+        ttk.Button(frm, text=t["option_cc"], command=lambda: self.run_script("Codes/second_script/cleaner.py")).grid(row=3, column=0, sticky="w", pady=4)
+        ttk.Button(frm, text=t["return_menu"], command=self.show_home).grid(row=4, column=0, pady=(12,0), sticky="w")
 
     def show_settings(self):
         self.clear_content()
@@ -1239,7 +1293,7 @@ class App(tk.Tk):
             t["color_pink"], t["color_orange"], t["color_violet"], t["color_green"],
             t["color_teal"], t["color_purple"], t["color_coral"], t["color_mint"],
             t["color_navy"], t["color_lavender"], t["color_gold"], t["color_charcoal"],
-            t["color_peach"], t["color_cyan"], t["color_dark"], 
+            t["color_peach"], t["color_cyan"], t["color_dark"], t["color_fullypink"], t["color_candy"],
         ]
         color_map = {
             t["color_sky"]: "sky",
@@ -1261,6 +1315,8 @@ class App(tk.Tk):
             t["color_peach"]: "peach",
             t["color_cyan"]: "cyan",
             t["color_dark"]: "dark",
+            t["color_fullypink"]: "Fully Pink",
+            t["color_candy"]: "Candy",
         }
         inv_color_map = {v: k for k, v in color_map.items()}
         color_var = tk.StringVar(value=inv_color_map.get(cfg.get("color_theme","sky"), t["color_sky"]))
@@ -1273,7 +1329,7 @@ class App(tk.Tk):
             t["console_preset_default"], t["console_preset_green"], t["console_preset_amber"], t["console_preset_light"],
             t.get("console_preset_pastel", "Pastel"), t.get("console_preset_night", "Night (soft)"),
             t.get("console_preset_solar", "Solarized"), t.get("console_preset_pink", "Pink on black"),
-            t.get("console_preset_navy", "Navy on black"), t.get("console_preset_dark", "Dark Mode"),
+            t.get("console_preset_navy", "Navy on black"), t.get("console_preset_dark", "Dark Mode"), t.get("console_preset_candy", "Candy"),
         ]
         preset_map = {
             t["console_preset_default"]: "default",
@@ -1286,6 +1342,7 @@ class App(tk.Tk):
             t.get("console_preset_pink", "Pink on black"): "pink",
             t.get("console_preset_navy", "Navy on black"): "navy",
             t.get("console_preset_dark", "Dark Mode"): "dark",
+            t.get("console_preset_candy", "Candy"): "Candy",
         }
         inv_preset_map = {v: k for k, v in preset_map.items()}
         console_preset_var = tk.StringVar(value=inv_preset_map.get(cfg.get("console_preset","default"), t["console_preset_default"]))
@@ -1338,7 +1395,10 @@ class App(tk.Tk):
         if not Path(script_path).exists():
             messagebox.showerror(translations[load_language()]["not_found_title"], translations[load_language()]["not_found_text"].format(path=script_path))
             return
-        ProcessRunner(self.console_append).run([sys.executable, script_path])
+        # Use the shared runner so we can update the UI processing label
+        self.runner.run([sys.executable, script_path],
+                        on_start=lambda: self._set_processing(True),
+                        on_complete=lambda rc: self._set_processing(False))
 
     def run_Scripts_automatic(self):
         seq = ["Codes/Scripts/a.py", "Codes/Scripts/b.py"]
@@ -1348,8 +1408,8 @@ class App(tk.Tk):
             if not Path(path).exists():
                 self.console_append(f"Introuvable: {path}")
                 run_next(i+1); return
-            runner = ProcessRunner(self.console_append)
-            runner.run([sys.executable, path])
+            runner = self.runner
+            runner.run([sys.executable, path], on_start=lambda: self._set_processing(True), on_complete=lambda rc: self._set_processing(False))
             def waiter():
                 while runner.proc and runner.proc.poll() is None:
                     time.sleep(0.2)
@@ -1365,28 +1425,104 @@ class App(tk.Tk):
                 minvalue=1, initialvalue=150, parent=self)
         except Exception:
             desired = None
-        if desired is None: return
+        if desired is None:
+            return
+
         script_path = "Codes/Scripts/c.py"
         if not Path(script_path).exists():
-            messagebox.showerror("Introuvable", f"Le script n'existe pas : {script_path}"); return
-        ProcessRunner(self.console_append).run([sys.executable, script_path, "--desired", str(desired)])
+            messagebox.showerror("Introuvable", f"Le script n'existe pas : {script_path}")
+            return
+
+        # Run via shared runner so we can display processing state
+        self.runner.run([sys.executable, script_path, "--desired", str(desired)],
+                        on_start=lambda: self._set_processing(True),
+                        on_complete=lambda rc: self._set_processing(False))
 
 
     def open_hashtag_panel(self):
-        lang = load_language(); t = translations.get(lang, translations["fr"])
-        top = tk.Toplevel(self); top.title(t["panel_header"]); top.geometry("420x420")
-        scripts = {
-            '#fyp': "Codes/Scripts/fyp.py",
-            '#trend': "Codes/Scripts/trend.py",
-            '#foryou': "Codes/Scripts/foryou.py",
-            '#famous': "Codes/Scripts/famous.py",
-            '#love': "Codes/Scripts/love.py",
-            '#mood': "Codes/Scripts/mood.py",
-            '#pourtoi': "Codes/Scripts/pourtoi.py",
-            translations[load_language()]["panel_create_personal"]: "Codes/Scripts/createscraper.py",
-        }
-        for tag, path in scripts.items():
-            ttk.Button(top, text=tag, command=(lambda p=path: self.run_script(p))).pack(fill=tk.X, padx=12, pady=6)
+        """Ouvre la fenêtre des scrapers de hashtag dynamiquement depuis Codes/Scripts/hashtag"""
+        lang = load_language()
+        t = translations.get(lang, translations["fr"])
+
+        top = tk.Toplevel(self)
+        top.title(t["panel_header"])
+        top.geometry("520x460")
+        top.resizable(False, True)
+        top.grab_set()
+        top.attributes("-topmost", True)
+
+        container = ttk.Frame(top, padding=12)
+        container.pack(fill=tk.BOTH, expand=True)
+
+    # --- Scroll Canvas setup ---
+        canvas = tk.Canvas(container, borderwidth=0, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        scroll_frame = ttk.Frame(canvas)
+
+        scroll_frame.bind(
+            "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+    # --- Molette souris (scroll fluide) ---
+        def _on_mousewheel(event):
+            canvas.yview_scroll(-1 * (event.delta // 120), "units")
+
+    # Compatibilité Windows / Linux
+        scroll_frame.bind_all("<MouseWheel>", _on_mousewheel)
+        scroll_frame.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
+        scroll_frame.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
+
+    # --- Liste des scripts ---
+        hashtag_dir = os.path.join("Codes", "Scripts", "hashtag")
+        if not os.path.isdir(hashtag_dir):
+            os.makedirs(hashtag_dir, exist_ok=True)
+
+        py_files = sorted(
+            [f for f in os.listdir(hashtag_dir) if f.endswith(".py")],
+            key=str.lower
+        )
+
+        if not py_files:
+            ttk.Label(scroll_frame, text="(Aucun scraper hashtag trouvé)", foreground="gray").pack(pady=10)
+        else:
+            row = 0
+            col = 0
+            for f in py_files:
+                tag_name = os.path.splitext(f)[0]
+                display_name = f"#{tag_name}"
+                full_path = os.path.join(hashtag_dir, f)
+
+                btn = ttk.Button(
+                    scroll_frame,
+                    text=display_name,
+                    width=18,
+                    command=lambda p=full_path: self.run_script(p)
+                )
+                btn.grid(row=row, column=col, padx=6, pady=6, sticky="we")
+
+                col += 1
+                if col >= 3:
+                    col = 0
+                    row += 1
+
+    # --- Séparateur + bouton "Créer perso" ---
+        row += 1
+        ttk.Separator(scroll_frame, orient="horizontal").grid(row=row, column=0, columnspan=3, sticky="we", pady=(12,6))
+        row += 1
+
+        create_label = t.get("panel_create_personal", "Créer perso")
+        create_path = os.path.join("Codes", "Scripts", "createscraper.py")
+        ttk.Button(
+            scroll_frame,
+            text=create_label,
+            command=lambda: self.run_script(create_path)
+        ).grid(row=row, column=0, columnspan=3, padx=8, pady=6, sticky="we")
+
+
 
     def _save_scrolls(self, value: int):
         cfg = load_config(); cfg["scrolls"] = int(value); save_config(cfg)
@@ -1428,11 +1564,62 @@ class App(tk.Tk):
         except Exception:
             pass
 
+    def _show_cookies_tip(self):
+        """Show a modal tip instructing the user to put cookies in acc/cookies/frenchacc_1.txt and how to get them.
+        If the user checks the 'do not show again' box the choice is saved to Settings/config.json under key 'suppress_cookies_tip'.
+        """
+        try:
+            cfg = load_config()
+            if cfg.get("suppress_cookies_tip"):
+                return
+            lang = load_language(); t = translations.get(lang, translations["fr"])
+
+            win = tk.Toplevel(self)
+            win.title(t.get("cookies_tip_title", "Cookies tip"))
+            win.geometry("520x220")
+            win.transient(self)
+            win.grab_set()
+
+            frm = ttk.Frame(win, padding=12)
+            frm.pack(fill=tk.BOTH, expand=True)
+            msg = t.get("cookies_tip_message", "Put your cookies into acc/cookies/frenchacc_1.txt.")
+            lbl = ttk.Label(frm, text=msg, wraplength=480, justify="left")
+            lbl.pack(anchor="w", pady=(2,8))
+
+            chk_var = tk.IntVar(value=0)
+            chk = ttk.Checkbutton(frm, text=t.get("cookies_tip_do_not_show", "Do not show this again"), variable=chk_var)
+            chk.pack(anchor="w", pady=(4,8))
+
+            def _close():
+                try:
+                    if chk_var.get():
+                        cfg = load_config()
+                        cfg["suppress_cookies_tip"] = True
+                        save_config(cfg)
+                except Exception:
+                    pass
+                try:
+                    win.destroy()
+                except Exception:
+                    pass
+
+            btn = ttk.Button(frm, text=translations[load_language()]["ok_title"], command=_close)
+            btn.pack(anchor="e", pady=(6,0))
+
+            # wait until user closes the tip before continuing
+            self.wait_window(win)
+        except Exception:
+            pass
+
     def show_region_changer(self):
         """Show the Region Changer tab: lists cookie files in acc/cookies and allows launching ttkccfnf.py with the selection."""
         self.clear_content()
+        try:
+            self._show_cookies_tip()
+        except Exception:
+            pass
         frm = ttk.Frame(self.content_left); frm.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
-        ttk.Label(frm, text="Region Changer - acc/cookies", font=("Segoe UI", 12, "bold")).pack(anchor="w", pady=(0,8))
+        ttk.Label(frm, text="Region Changer - if you want new fyp - need cookies of an fresh/old tiktok acc", font=("Segoe UI", 12, "bold")).pack(anchor="w", pady=(0,8))
 
         list_frame = ttk.Frame(frm)
         list_frame.pack(fill=tk.BOTH, expand=True)
@@ -1509,6 +1696,10 @@ class App(tk.Tk):
         cmd = [sys.executable, script]
         try:
             self.console_append(f"\n$ {' '.join(cmd)}\n")
+            try:
+                self._set_processing(True)
+            except Exception:
+                pass
             proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
         except Exception as e:
             self.console_append(f"Impossible de lancer le script: {e}\n")
@@ -1522,11 +1713,144 @@ class App(tk.Tk):
                 self.console_append(f"[reader error] {e}\n")
             finally:
                 rc = proc.poll()
+                try: self._set_processing(False)
+                except Exception: pass
                 self.console_append(f"\n[Process terminé] Code: {rc}\n")
 
         threading.Thread(target=reader, daemon=True).start()
 
         try:
+            to_send = f"{index+1}\n"
+            proc.stdin.write(to_send)
+            proc.stdin.flush()
+        except Exception as e:
+            self.console_append(f"Impossible d'envoyer la sélection au script: {e}\n")
+
+        def ping_refresh():
+            for _ in range(15):
+                if proc.poll() is not None:
+                    break
+                try:
+                    self._refresh_session_badge()
+                except Exception:
+                    pass
+                time.sleep(2)
+            try:
+                self._refresh_session_badge()
+            except Exception:
+                pass
+        threading.Thread(target=ping_refresh, daemon=True).start()
+
+
+    def show_report(self):
+        """Show the Report tab: lists cookie files in acc/cookies and allows launching Codes/Scripts/report.py with the selection."""
+        self.clear_content()
+        try:
+            self._show_cookies_tip()
+        except Exception:
+            pass
+        frm = ttk.Frame(self.content_left); frm.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
+        ttk.Label(frm, text="Report - Spam report an account with reason", font=("Segoe UI", 12, "bold")).pack(anchor="w", pady=(0,8))
+
+        list_frame = ttk.Frame(frm)
+        list_frame.pack(fill=tk.BOTH, expand=True)
+
+        self.rep_listbox = tk.Listbox(list_frame, height=12, selectmode=tk.SINGLE)
+        self.rep_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        lb_sb = ttk.Scrollbar(list_frame, command=self.rep_listbox.yview)
+        lb_sb.pack(side=tk.RIGHT, fill=tk.Y)
+        self.rep_listbox.configure(yscrollcommand=lb_sb.set)
+
+        btn_frame = ttk.Frame(frm)
+        btn_frame.pack(anchor="w", pady=(8,0))
+
+        ttk.Button(btn_frame, text="Refresh", command=self._rep_refresh_list).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text="Launch", command=self._rep_launch_selected).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text=translations[load_language()]["return_menu"], command=self.show_home).pack(side=tk.LEFT, padx=12)
+
+        self._rep_refresh_list()
+
+    def _rep_cookie_files(self):
+        """Return sorted list of cookie files found in acc/cookies/ (full paths)."""
+        import glob
+        search_dir = os.path.join("acc", "cookies")
+        if not os.path.isdir(search_dir):
+            return []
+        patterns = ["frenchacc_*.txt", "frenchacc_*.json", "*.txt", "*.json"]
+        files = []
+        for p in patterns:
+            files.extend(glob.glob(os.path.join(search_dir, p)))
+        files = sorted(dict.fromkeys(files))
+        return files
+    
+    def _rep_refresh_list(self):
+        self.rep_listbox.delete(0, tk.END)
+        files = self._rep_cookie_files()
+        if not files:
+            self.rep_listbox.insert(tk.END, "(no cookie files found in acc/cookies/)")
+            return
+        for f in files:
+            self.rep_listbox.insert(tk.END, os.path.basename(f))
+
+    def _rep_launch_selected(self):
+        idx = self.rep_listbox.curselection()
+        if not idx:
+            messagebox.showerror("Selection requise", "Choisir un fichier cookie dans la liste.")
+            return
+        index = idx[0]
+        files = self._rep_cookie_files()
+        if index >= len(files):
+            messagebox.showerror("Erreur", "Sélection invalide.")
+            return
+        cookie_path = files[index]
+        threading.Thread(target=self._rep_run_report, args=(index, cookie_path, files), daemon=True).start()
+
+    def _rep_run_report(self, index, cookie_path, files):
+        """
+        Launch Codes/Scripts/report.py and provide the chosen index.
+        Stream output into the app console and attempt to refresh session status while it runs.
+        """
+        script = "Codes/Scripts/report.py"
+        if not Path(script).exists():
+            # try fallback locations
+            alt1 = Path("Codes") / "Scripts" / "report.py"
+            alt2 = Path("report.py")
+            if alt1.exists():
+                script = str(alt1)
+            elif alt2.exists():
+                script = str(alt2)
+            else:
+                self.console_append(f"Script {script} introuvable.\n")
+                return
+
+        cmd = [sys.executable, script]
+        try:
+            self.console_append(f"\n$ {' '.join(cmd)}\n")
+            try:
+                self._set_processing(True)
+            except Exception:
+                pass
+            proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+        except Exception as e:
+            self.console_append(f"Impossible de lancer le script: {e}\n")
+            return
+
+        def reader():
+            try:
+                for line in proc.stdout:
+                    self.console_append(line)
+            except Exception as e:
+                self.console_append(f"[reader error] {e}\n")
+            finally:
+                rc = proc.poll()
+                try: self._set_processing(False)
+                except Exception: pass
+                self.console_append(f"\n[Process terminé] Code: {rc}\n")
+
+        threading.Thread(target=reader, daemon=True).start()
+
+        try:
+            # send 1-based index + newline so interactive scripts can consume it
             to_send = f"{index+1}\n"
             proc.stdin.write(to_send)
             proc.stdin.flush()
