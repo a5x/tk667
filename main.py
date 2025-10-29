@@ -150,6 +150,7 @@ translations = {
         "changelogs_lines": [
             "",
             "Changelogs :",
+            "2.7 : Ajout de Report, une option avec plusieurs choix de report assez rapide mais encore plus dans le futur.",
             "2.6 : Modification de la position de l'interface Paramètres, Modif des traductions, Modif de la console pour les couleurs.",
             "2.5(.1 & .2) : Ajout de l'option Region Changer, Ajout de plusieurs couleurs UI, ajout de nouveaux logos, fix de bugs, Ajout de la traduction en Russe faite par un Russe, Ajout de la détection du compte tiktok connecté.",
             "2.4 : Fix updater (remplace main.py en premier, copie atomique, UI bloquée).",
@@ -168,7 +169,6 @@ translations = {
             "1.1 : Paramètres.",
             "1.0 : Initial."
         ],
-    # Tip shown when opening Report / Region Changer to explain cookie usage
     "cookies_tip_title": "Conseil cookies",
     "cookies_tip_message": "Placer vos cookies dans le fichier acc/cookies/frenchacc_1.txt.\nPour récupérer TOUS les vrais cookies, utilisez l'extension Edit This Cookies V3 et copiez le contenu dans ce fichier.",
     "cookies_tip_do_not_show": "Ne plus afficher ce message",
@@ -284,6 +284,7 @@ translations = {
         "changelogs_lines": [
             "",
             "Changelogs :",
+            "2.7 : New option : Report, if you want to spam report @, bio, pfp it's now possible.",
             "2.6 : Adjusted the position/layout of the Settings interface; updated translations.",
             "2.5(.1 & .2) : Added Region Changer option, added several UI colors, added new logos, bug fixes, added Russian translation contributed by a Russian, added detection of the connected TikTok account.",
             "2.4 : Fix updater (replace main.py first, atomic copy, UI locked).",
@@ -417,6 +418,7 @@ translations = {
     "changelogs_lines": [
         "",
         "Изменения:",
+        "2.7 : New option : Report, if you want to spam report @, bio, pfp it's now possible.",
         "2.6 : Изменено расположение интерфейса настроек; обновлены переводы.",
         "2.5(.1 & .2) : Добавлена опция Region Changer, добавлено несколько цветовых тем интерфейса, добавлены новые логотипы, исправлены ошибки, добавлен перевод на русский (выполнен русским), добавлено обнаружение подключённого аккаунта TikTok.",
         "2.4: Исправить систему обновления (сначала замени main.py, автоматическое копирование, блокировка интерфейса).",
