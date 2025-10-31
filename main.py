@@ -790,7 +790,6 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(APP_TITLE)
-        self.iconbitmap("667.ico")
         self.minsize(*APP_MIN_SIZE)
         self.geometry("1100x700")
 
@@ -1998,4 +1997,5 @@ if __name__ == "__main__":
 
     app = App()
     app.mainloop()
+
 
