@@ -25,7 +25,7 @@ except Exception:
 APP_TITLE = "667 SCRAPER -  dev : s/O @enabIe /// idea @repient"
 APP_MIN_SIZE = (1024, 640)
 
-LOCAL_VERSION = "2.7"
+LOCAL_VERSION = "2.8"
 GITHUB_OWNER  = "a5x"
 GITHUB_REPO   = "tk667"
 GITHUB_BRANCH = "main"
@@ -1998,3 +1998,4 @@ if __name__ == "__main__":
 
     app = App()
     app.mainloop()
+
