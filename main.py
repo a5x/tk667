@@ -33,8 +33,8 @@ VERSION_URL = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/r
 ZIP_URL = f"https://codeload.github.com/{GITHUB_OWNER}/{GITHUB_REPO}/zip/refs/heads/{GITHUB_BRANCH}"
 
 PRESERVE_PATHS = [
-    "Settings/lang_config.json",
-    "Settings/config.json",
+    "Settings/",  # Preserve tout le dossier Settings
+    "acc/cookies/",  # Preserve le dossier cookies
     "txt_files/",
 ]
 
