@@ -22,7 +22,7 @@ try:
 except Exception:
     requests = None
 
-APP_TITLE = "667 SCRAPER"
+APP_TITLE = "667 SCRAPER -  dev : s/O @enabIe /// idea @repient"
 APP_MIN_SIZE = (1024, 640)
 
 LOCAL_VERSION = "2.7"
@@ -144,15 +144,16 @@ translations = {
         "status_disconnected": "Compte : non connecté",
         "status_for": "depuis",
         "credits_lines": [
-            "dev @enabIe\n idea from @repient\n RU translation s/O : @akiimo alias @ftk1337"
+            "dev @enabIe\n idea from @repient\n RU translation s/O : @akiimo alias @ftk1337\n tester : @mercedes"
         ],
         "changelogs_title": "Changelogs",
         "changelogs_lines": [
             "",
             "Changelogs :",
+            "2.8 : Ajout d'une page de login, correctifs, ajout quand une mise a jour supprime tout les fichiers pour les remplacer par des nouveaux.",
             "2.7 : Ajout de Report, une option avec plusieurs choix de report assez rapide mais encore plus dans le futur.",
-            "2.6 : Modification de la position de l'interface Paramètres, Modif des traductions, Modif de la console pour les couleurs.",
-            "2.5(.1 & .2) : Ajout de l'option Region Changer, Ajout de plusieurs couleurs UI, ajout de nouveaux logos, fix de bugs, Ajout de la traduction en Russe faite par un Russe, Ajout de la détection du compte tiktok connecté.",
+            "2.6 : Modification de la position de l’interface Paramètres, Modif des traductions, Modif de la console pour les couleurs.",
+            "2.5(.1 & .2) : Ajout de l’option Region Changer, Ajout de plusieurs couleurs UI, ajout de nouveaux logos, fix de bugs, Ajout de la traduction en Russe faite par un Russe, Ajout de la détection du compte tiktok connecté.",
             "2.4 : Fix updater (remplace main.py en premier, copie atomique, UI bloquée).",
             "2.3 : Couleurs d’interface (Bleu ciel, Bleu foncé, Rouge, Jaune, Vert, Rose, Orange, Violet).",
             "2.2 : Sélecteur thème console (clair/sombre).",
@@ -278,12 +279,13 @@ translations = {
         "status_for": "for",
         "credits_title": "Credits",
         "credits_lines": [
-            "dev @enabIe\n idea from @repient\n RU translation s/O : @akiimo alias @ftk1337"
+            "dev @enabIe\n idea from @repient\n RU translation s/O : @akiimo alias @ftk1337\n tester : @mercedes"
         ],
         "changelogs_title": "Changelogs",
         "changelogs_lines": [
             "",
             "Changelogs :",
+            "2.8 : Added login page, fixed issues, updated the update system to replace all files with new ones when updating.",
             "2.7 : New option : Report, if you want to spam report @, bio, pfp it's now possible.",
             "2.6 : Adjusted the position/layout of the Settings interface; updated translations.",
             "2.5(.1 & .2) : Added Region Changer option, added several UI colors, added new logos, bug fixes, added Russian translation contributed by a Russian, added detection of the connected TikTok account.",
@@ -412,12 +414,13 @@ translations = {
     "status_disconnected": "Аккаунт: не подключён",
     "status_for": "с",
     "credits_lines": [
-        "разработка @enabIe\n, идея от @repient\n, перевод на русский: @akiimoo alias @ftk1337"
+        "разработка @enabIe\n, идея от @repient\n, перевод на русский: @akiimoo alias @ftk1337\n tester : @mercedes"
     ],
     "changelogs_title": "Список изменений",
     "changelogs_lines": [
         "",
         "Изменения:",
+        "2.8 : Добавлена страница входа, исправлены ошибки, обновлена система обновления для замены всех файлов на новые при обновлении.",
         "2.7 : New option : Report, if you want to spam report @, bio, pfp it's now possible.",
         "2.6 : Изменено расположение интерфейса настроек; обновлены переводы.",
         "2.5(.1 & .2) : Добавлена опция Region Changer, добавлено несколько цветовых тем интерфейса, добавлены новые логотипы, исправлены ошибки, добавлен перевод на русский (выполнен русским), добавлено обнаружение подключённого аккаунта TikTok.",
@@ -448,6 +451,8 @@ SETTINGS_DIR.mkdir(exist_ok=True)
 LANG_FILE = SETTINGS_DIR / "lang_config.json"
 CONFIG_FILE = SETTINGS_DIR / "config.json"
 SESSION_STATUS_FILE = SETTINGS_DIR / "session_status.json"
+TEMP_USER_FILE = Path("temp_user.txt")
+
 
 def load_language() -> str:
     if LANG_FILE.exists():
@@ -526,6 +531,38 @@ def _atomic_copy(src: Path, dst: Path):
             shutil.copyfileobj(fsrc, fdst, length=1024*1024)
         os.replace(tmp, dst)
 
+
+def _safe_clean_directory(base_dir: Path, keep_names=("main.py",)):
+    """
+    Supprime tout le contenu de base_dir sauf les noms listés dans keep_names.
+    Conserve les fichiers listés en racine (ex: 'main.py').
+    """
+    try:
+        for entry in base_dir.iterdir():
+            name = entry.name
+            if name in keep_names:
+                continue
+            try:
+                _ensure_writable(entry)
+            except Exception:
+                pass
+            if entry.is_dir():
+                try:
+                    shutil.rmtree(entry, ignore_errors=True)
+                except Exception:
+                    pass
+            else:
+                try:
+                    entry.unlink(missing_ok=True)
+                except Exception:
+                    try:
+                        entry.chmod(stat.S_IWRITE)
+                        entry.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
 def check_update_gui(root: tk.Tk, console_append):
     if not requests:
         return
@@ -533,9 +570,9 @@ def check_update_gui(root: tk.Tk, console_append):
 
     def task():
         try:
-            console_append(f"Checking update version : {VERSION_URL}\n")
+            console_append(f"Checking update version !\n")
             r = requests.get(VERSION_URL, timeout=8)
-            console_append(f"HTTP {r.status_code}\n")
+            console_append(f"HTTP {r.status_code} Update link works !\n")
             if r.status_code != 200:
                 console_append("Error can't find the version on the github page.\n")
                 return
@@ -648,6 +685,9 @@ def _perform_update(win: tk.Toplevel, prog: ttk.Progressbar, status_var: tk.Stri
         return
 
     try:
+        console_append("Cleaning current folder (keeping main.py)…\n")
+        _safe_clean_directory(base_dir, keep_names=("main.py",))
+
         status_var.set(t["status_applying"])
 
         files_to_copy = []
@@ -655,8 +695,6 @@ def _perform_update(win: tk.Toplevel, prog: ttk.Progressbar, status_var: tk.Stri
             if p.is_dir():
                 continue
             rel = str(p.relative_to(src_root)).replace("\\", "/")
-            if _path_is_preserved(rel):
-                continue
             files_to_copy.append((rel, p, base_dir / rel))
 
         files_to_copy.sort(key=lambda t: (t[0] != "main.py", t[0]))
@@ -720,7 +758,6 @@ class ProcessRunner:
                     cmd, cwd=cwd, stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT, text=True, bufsize=1
                 )
-                # notify caller the process started
                 try:
                     if on_start:
                         on_start()
@@ -735,7 +772,7 @@ class ProcessRunner:
 
                 for line in self.proc.stdout:
                     if success_re.search(line):
-                        self.console_append(line, color="green")   # vert pour email_found
+                        self.console_append(line, color="green")
                     else:
                         self.console_append(line)
 
@@ -753,6 +790,7 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(APP_TITLE)
+        self.iconbitmap("667.ico")
         self.minsize(*APP_MIN_SIZE)
         self.geometry("1100x700")
 
@@ -857,6 +895,8 @@ class App(tk.Tk):
             self._refresh_ui_texts()
         except Exception:
             pass
+        
+        self.temp_username = self._consume_temp_user()
 
         self.show_home()
         self.after(800, lambda: check_update_gui(self, self.console_append))
@@ -926,7 +966,6 @@ class App(tk.Tk):
             pass
 
         try:
-            # refresh the session badge text immediately
             self._refresh_session_badge()
         except Exception:
             pass
@@ -994,7 +1033,7 @@ class App(tk.Tk):
             "green":  {"accent": "#2E7D32", "accent_fg": "#ffffff", "bg": "#F1F7F2"},
             "teal":   {"accent": "#009688", "accent_fg": "#ffffff", "bg": "#F0FBFA"},
             "purple": {"accent": "#7B1FA2", "accent_fg": "#ffffff", "bg": "#FBF0FD"},
-            "coral":  {"accent": "#FF6F61", "accent_fg": "#ffffff", "bg": "#FFF4F2"},
+            "coral": {"accent": "#FF6F61", "accent_fg": "#ffffff", "bg": "#FFF4F2"},
             "mint":   {"accent": "#2ECC71", "accent_fg": "#ffffff", "bg": "#F6FFF3"},
             "navy":   {"accent": "#0D47A1", "accent_fg": "#ffffff", "bg": "#F4F7FB"},
             "lavender": {"accent": "#B39DDB", "accent_fg": "#ffffff", "bg": "#FBF8FF"},
@@ -1226,6 +1265,13 @@ class App(tk.Tk):
         center.place(relx=0.5, rely=0.3, anchor="center")
         lang = load_language(); t = translations.get(lang, translations["fr"])
         title = t.get("menu_title", "★ New Release {version} ★").format(version=LOCAL_VERSION)
+        if getattr(self, "temp_username", None):
+            ttk.Label(
+                center,
+                text=f"Hello ! {self.temp_username}",
+                font=("Segoe UI", 13, "bold")
+            ).pack(anchor="center", pady=(6, 4))
+
         ttk.Label(center, text=title, font=("Segoe UI", 18, "bold")).pack(anchor="center")
         ttk.Label(center, text=t["home_welcome"]).pack(anchor="center", pady=(6, 0))
 
@@ -1266,7 +1312,6 @@ class App(tk.Tk):
     def show_settings(self):
         self.clear_content()
         outer = ttk.Frame(self.content_left); outer.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
-        # place a centered container so the settings panel appears centered in the window
         center = ttk.Frame(outer)
         center.place(relx=0.5, rely=0.02, anchor="n")
         frm = ttk.Frame(center); frm.pack()
@@ -1376,7 +1421,7 @@ class App(tk.Tk):
         lang = load_language(); t = translations.get(lang, translations["fr"])
         ttk.Label(frm, text=t.get("credits_title", "Credits"), font=("Segoe UI", 14, "bold")).pack(anchor="w")
         txt = tk.Text(frm, height=8, wrap="word"); txt.pack(fill=tk.BOTH, expand=True)
-        lines = t.get("credits_lines", ["dev @enabIe\n idea from @repient\n RU translation s/O : @akiimo alias @ftk1337"])
+        lines = t.get("credits_lines", ["dev @enabIe\n idea from @repient\n RU translation s/O : @akiimo alias @ftk1337\n tester : @mercedes"])
         txt.insert("1.0", "\n".join(lines))
         txt.configure(state=tk.DISABLED)
 
@@ -1397,7 +1442,7 @@ class App(tk.Tk):
         if not Path(script_path).exists():
             messagebox.showerror(translations[load_language()]["not_found_title"], translations[load_language()]["not_found_text"].format(path=script_path))
             return
-        # Use the shared runner so we can update the UI processing label
+
         self.runner.run([sys.executable, script_path],
                         on_start=lambda: self._set_processing(True),
                         on_complete=lambda rc: self._set_processing(False))
@@ -1435,7 +1480,6 @@ class App(tk.Tk):
             messagebox.showerror("Introuvable", f"Le script n'existe pas : {script_path}")
             return
 
-        # Run via shared runner so we can display processing state
         self.runner.run([sys.executable, script_path, "--desired", str(desired)],
                         on_start=lambda: self._set_processing(True),
                         on_complete=lambda rc: self._set_processing(False))
@@ -1456,7 +1500,6 @@ class App(tk.Tk):
         container = ttk.Frame(top, padding=12)
         container.pack(fill=tk.BOTH, expand=True)
 
-    # --- Scroll Canvas setup ---
         canvas = tk.Canvas(container, borderwidth=0, highlightthickness=0)
         scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
         scroll_frame = ttk.Frame(canvas)
@@ -1469,16 +1512,13 @@ class App(tk.Tk):
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-    # --- Molette souris (scroll fluide) ---
         def _on_mousewheel(event):
             canvas.yview_scroll(-1 * (event.delta // 120), "units")
 
-    # Compatibilité Windows / Linux
         scroll_frame.bind_all("<MouseWheel>", _on_mousewheel)
         scroll_frame.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
         scroll_frame.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
 
-    # --- Liste des scripts ---
         hashtag_dir = os.path.join("Codes", "Scripts", "hashtag")
         if not os.path.isdir(hashtag_dir):
             os.makedirs(hashtag_dir, exist_ok=True)
@@ -1511,7 +1551,6 @@ class App(tk.Tk):
                     col = 0
                     row += 1
 
-    # --- Séparateur + bouton "Créer perso" ---
         row += 1
         ttk.Separator(scroll_frame, orient="horizontal").grid(row=row, column=0, columnspan=3, sticky="we", pady=(12,6))
         row += 1
@@ -1532,7 +1571,6 @@ class App(tk.Tk):
 
     def _change_lang(self, lang_code: str):
         save_language(lang_code)
-        # refresh visible UI texts immediately
         try:
             self._refresh_ui_texts()
         except Exception:
@@ -1608,7 +1646,6 @@ class App(tk.Tk):
             btn = ttk.Button(frm, text=translations[load_language()]["ok_title"], command=_close)
             btn.pack(anchor="e", pady=(6,0))
 
-            # wait until user closes the tip before continuing
             self.wait_window(win)
         except Exception:
             pass
@@ -1886,7 +1923,78 @@ class App(tk.Tk):
         txt.insert("1.0", "\n".join(lines))
         txt.configure(state=tk.DISABLED)
 
+
+    def _consume_temp_user(self) -> str | None:
+        """Lit temp_user.txt pour récupérer @username puis supprime le fichier."""
+        try:
+            if TEMP_USER_FILE.exists():
+                at = TEMP_USER_FILE.read_text(encoding="utf-8").strip()
+                try:
+                    TEMP_USER_FILE.unlink()
+                except Exception:
+                    pass
+                return at if at else None
+        except Exception:
+            pass
+        return None
+
+
+def _write_disconnected():
+    try:
+        SETTINGS_DIR.mkdir(exist_ok=True)
+        payload = {"connected": False, "username": None, "when": None}
+        SESSION_STATUS_FILE.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+def _is_connected() -> bool:
+    try:
+        if not SESSION_STATUS_FILE.exists():
+            return False
+        data = json.loads(SESSION_STATUS_FILE.read_text(encoding="utf-8"))
+        return bool(data.get("connected"))
+    except Exception:
+        return False
+
+def _spawn_login_and_wait():
+    """Lance login.exe (si présent) sinon login.py, puis attend jusqu'à connected:true dans session_status.json."""
+    _write_disconnected()
+
+    exe_path = Path("login.exe")
+    py_path  = Path("login.py")
+    if exe_path.exists():
+        cmd = [str(exe_path)]
+    elif py_path.exists():
+        cmd = [sys.executable, str(py_path)]
+    else:
+        messagebox.showerror("Erreur", "login.exe / login.py introuvable à la racine du projet.")
+        sys.exit(1)
+
+    try:
+        proc = subprocess.Popen(cmd)
+    except Exception as e:
+        messagebox.showerror("Erreur", f"Impossible de lancer l'authentification : {e}")
+        sys.exit(1)
+
+    try:
+        while True:
+            if _is_connected():
+                break
+            rc = proc.poll()
+            if rc is not None and not _is_connected():
+                proc = subprocess.Popen(cmd)
+            time.sleep(0.4)
+    finally:
+        try:
+            if proc.poll() is None:
+                proc.terminate()
+        except Exception:
+            pass
+
+
 if __name__ == "__main__":
+    _spawn_login_and_wait()
+
+
     app = App()
     app.mainloop()
-
