@@ -63,16 +63,6 @@ options = Options()
 options.page_load_strategy = 'eager'
 options.add_argument("--disable-gpu")
 options.add_argument("--disable-software-rasterizer")
-options.add_argument("--disable-features=VizDisplayCompositor")
-options.add_argument("--log-level=3")
-options.add_experimental_option("excludeSwitches", ["enable-logging", "enable-automation"])
-prefs = {
-    "profile.managed_default_content_settings.images": 2,
-    "profile.managed_default_content_settings.stylesheets": 2,
-    "profile.managed_default_content_settings.fonts": 2,
-}
-options.add_experimental_option("prefs", prefs)
-options.add_argument("--headless=new")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-extensions")
 options.add_argument("--disable-dev-shm-usage")
@@ -84,7 +74,7 @@ if os.name == 'nt':
     service.creationflags = subprocess.CREATE_NO_WINDOW
 
 driver = webdriver.Chrome(service=service, options=options)
-driver.implicitly_wait(5)
+driver.implicitly_wait(10)
 driver.set_page_load_timeout(30)
 
 driver.get(URL)
