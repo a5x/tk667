@@ -62,7 +62,7 @@ SCROLL_LIMIT = config.get("scrolls", 10)
 options = Options()
 options.page_load_strategy = 'eager'
 options.add_argument("--disable-gpu")
-options.add_argument("--headless-new")
+options.add_argument("--headless=new")
 options.add_argument("--disable-software-rasterizer")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-extensions")
@@ -112,4 +112,5 @@ with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
 
 print(f"{t['done']} {len(collected_links)}")
 driver.quit()
+
 
