@@ -8,7 +8,6 @@ import re
 import sys
 from colorama import init, Fore, Style
 
-# Rendre l'IO robuste sur Windows (console CP1252)
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")

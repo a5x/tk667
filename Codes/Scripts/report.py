@@ -104,9 +104,6 @@ def conv_path_for_cookie_file(cookie_file_path: str) -> str:
     return str(Path(SETTINGS_DIR) / f"converted_cookies_{safe}.json")
 
 def convert_to_selenium(cookies: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Selenium attend des cookies avec (name, value, domain/path ou url). On ajoutera via driver.add_cookie().
-    """
     out = []
     for c in cookies:
         name = c.get("name"); value = c.get("value")
@@ -316,12 +313,6 @@ def is_connected(driver) -> bool:
         return False
 
 def extract_username_via_href(driver) -> Optional[str]:
-    """
-    NE TOUCHE PAS la logique métier : on extrait le @ via href
-    - a[data-e2e="nav-profile"] si dispo
-    - sinon on scanne les anchors
-    - sinon on tente og:url / canonical
-    """
     def pick_from_href(href: Optional[str]) -> Optional[str]:
         if not href: return None
         try:
@@ -383,9 +374,6 @@ def extract_username_via_href(driver) -> Optional[str]:
     return None
 
 def extract_username_fallback_state(driver) -> Optional[str]:
-    """
-    Fallback comme avant (SIGI_STATE etc.) via JS exécuté par Selenium.
-    """
     try:
         got = driver.execute_script("""
         try {

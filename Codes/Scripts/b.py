@@ -59,7 +59,6 @@ init(autoreset=True)
 INPUT_FILE = "txt_files/tiktok_profiles.txt"
 OUTPUT_FILE = "txt_files/profiles_with_email.txt"
 
-# wider email regex (all domains)
 email_pattern = re.compile(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', re.IGNORECASE)
 
 def format_number(value):
@@ -92,7 +91,6 @@ def get_info(username: str):
 
     soup = BeautifulSoup(response.text, "html.parser")
 
-    # 1) Preferred source: <script id="SIGI_STATE">...</script>
     try:
         state_tag = soup.find("script", id="SIGI_STATE")
         if state_tag and state_tag.string:
@@ -110,10 +108,8 @@ def get_info(username: str):
                 if bio is not None:
                     return {"username": username, "bio": bio}
     except Exception as e:
-        # Continue to fallback
         pass
 
-    # 2) Fallback: naive regex for "signature":"..."
     try:
         m = re.search(r'"signature"\s*:\s*"([^"]*)"', response.text)
         if m:
@@ -136,7 +132,6 @@ def main():
         print(Fore.RED + t["input_missing"].format(INPUT_FILE))
         return
 
-    # Clean output file (fresh run)
     try:
         if os.path.exists(OUTPUT_FILE):
             open(OUTPUT_FILE, "w", encoding="utf-8").close()
@@ -161,7 +156,6 @@ def main():
         bio = info["bio"] if isinstance(info, dict) else ""
         emails_found = email_pattern.findall(bio or "")
 
-        # 🔹 Keep only Gmail addresses; ignore all others
         gmail_found = [mail for mail in emails_found if mail.lower().endswith("@gmail.com")]
 
         if gmail_found:
@@ -171,7 +165,6 @@ def main():
         else:
             print(Fore.RED + t["email_not_found"].format(username))
 
-    # Append results
     try:
         with open(OUTPUT_FILE, "a", encoding="utf-8") as f:
             for line in matching_profiles:
@@ -180,7 +173,6 @@ def main():
     except Exception as e:
         print(Fore.RED + t["processing_error"].format("write_output", e))
 
-    # Optional: chain next script without crashing if it fails/missing
     script_path = os.path.join("Codes", "second_script", "tiktok_info.py")
     if os.path.exists(script_path):
         print(Fore.CYAN + t["next_script"])

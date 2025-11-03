@@ -4,7 +4,6 @@ import os
 input_path = "Settings/cookies.json"
 output_path = "Settings/converted_cookies.json"
 
-# Fonction pour convertir sameSite au format Playwright
 def convert_same_site(value):
     if value.lower() in ["lax", "lax_mode", "laxmode"]:
         return "Lax"
@@ -14,7 +13,6 @@ def convert_same_site(value):
         return "None"
     return "Lax"
 
-# Charger cookies et convertir
 with open(input_path, "r", encoding="utf-8") as f:
     original = json.load(f)
 

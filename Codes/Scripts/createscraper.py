@@ -227,7 +227,6 @@ def main():
     win.grab_set()
     win.attributes("-topmost", True)
 
-    # --- scrollable frame ---
     container = ttk.Frame(win)
     container.pack(fill="both", expand=True)
     canvas = tk.Canvas(container, borderwidth=0)
@@ -241,7 +240,6 @@ def main():
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
 
-    # --- contenu dans la frame scrollable ---
     hashtag_var = tk.StringVar()
     file_var = tk.StringVar()
 

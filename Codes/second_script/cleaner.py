@@ -1,6 +1,5 @@
 import os
 
-# Liste des fichiers à nettoyer
 FILES_TO_CLEAN = [
     "txt_files/tiktok_profiles.txt",
     "txt_files/profiles_with_email.txt",
