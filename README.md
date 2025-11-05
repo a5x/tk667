@@ -9,3 +9,5 @@
 
 - J'espère que ce logiciel vous permettra de faire de belles collaborations avec les personnes que vous désirez !
 - Si vous avez des questions, n'hésitez pas, je suis disposé à répondre dans les brefs délais !
+
+- outil co crée avec ChatGPT !
