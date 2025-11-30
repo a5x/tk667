@@ -32,10 +32,10 @@ def display_banner():
 
 """
     print(Fore.WHITE + ascii_art)
-    sep = "-" * 132
+    sep = "=" * 150
     print(Fore.WHITE + sep)
     print(
-        Fore.GREEN + "                                                s/O Le Z t.me/@enabIe "
+        Fore.GREEN + "  s/O Le Z t.me/@enabIe "
     )
     print(Fore.WHITE + sep + "\n")
 
@@ -85,7 +85,30 @@ def _load_userinfo_from_soup(soup: BeautifulSoup) -> dict:
 
     return {}
 
+def normalize_username(username: str) -> str:
+    """
+    Permet d'accepter :
+    - @username
+    - username
+    - https://www.tiktok.com/@username
+    - https://tiktok.com/@username
+    """
+    username = username.strip()
+
+    # URL complète → extrait après le @
+    if username.startswith("http://") or username.startswith("https://"):
+        if "@" in username:
+            username = username.split("@")[-1]
+
+    # Commence par @ → on retire
+    if username.startswith("@"):
+        username = username[1:]
+
+    return username
+
 def get_info(username):
+    username = normalize_username(username)
+
     headers = {
         "Host": "www.tiktok.com",
         "sec-ch-ua": "\" Not A;Brand\";v=\"99\", \"Chromium\";v=\"99\", \"Google Chrome\";v=\"99\"",
@@ -101,10 +124,12 @@ def get_info(username):
         "accept-language": "en-US,en;q=0.9"
     }
 
+    url = f'https://www.tiktok.com/@{username}'
+
     try:
-        response = requests.get(f'https://www.tiktok.com/@{username}', headers=headers, timeout=15)
+        response = requests.get(url, headers=headers, timeout=15)
     except Exception as e:
-        print(Fore.RED + f"[x] Requete echouee pour : {username} ({e})")
+        print(Fore.RED + f"[x] Requête échouée : {username} ({e})")
         return None
 
     if response.status_code != 200:
@@ -115,7 +140,7 @@ def get_info(username):
     user_info = _load_userinfo_from_soup(soup)
 
     if not user_info:
-        print(Fore.RED + f"[x] Pas de donnees pour : {username}")
+        print(Fore.RED + f"[x] Pas de données pour : {username}")
         return None
 
     user = user_info.get('user', {}) if isinstance(user_info, dict) else {}
@@ -145,9 +170,32 @@ def get_info(username):
     }
 
 def extract_username_from_line(line):
+    """
+    Permet de détecter automatiquement :
+    - username
+    - @username
+    - URL TikTok
+    """
+    line = line.strip()
+
+    # URL → extrait username après @
+    if line.startswith("http://") or line.startswith("https://"):
+        if "@" in line:
+            return line.split("@")[-1]
+
+    # @username
+    if line.startswith("@"):
+        return line[1:]
+
+    # username simple
+    if " " not in line:
+        return line
+
+    # autres formats : recherche d'un token qui commence par @
     for token in line.split():
         if token.startswith('@') and len(token) > 1:
-            return token.lstrip('@')
+            return token[1:]
+
     return None
 
 def strip_existing_date_country(parts):
@@ -171,29 +219,25 @@ if __name__ == '__main__':
     for line in original_lines:
         username = extract_username_from_line(line)
         if not username:
-            print(Fore.YELLOW + f"[!] Ignore (username introuvable) : {line}")
+            print(Fore.YELLOW + f"[!] Ignoré (username introuvable) : {line}")
             updated_lines.append(line)
             continue
 
-        print(Fore.WHITE + f"[->] Scraping info's : @{username}")
+        print(Fore.WHITE + f"[->] Traitement de : @{username}")
         info = get_info(username)
 
         parts = line.split()
         parts = strip_existing_date_country(parts)
 
         if info:
-            create_date = info.get("create_date", "N/A")
-            region = info.get("region", "N/A")
-            parts.extend([create_date, region])
-            updated_line = " ".join(parts)
-            updated_lines.append(updated_line)
+            parts.extend([info.get("create_date", "N/A"), info.get("region", "N/A")])
         else:
             parts.extend(["N/A", "N/A"])
-            updated_line = " ".join(parts)
-            updated_lines.append(updated_line)
+
+        updated_lines.append(" ".join(parts))
 
     with open(input_file, 'w', encoding='utf-8') as f:
         for ln in updated_lines:
             f.write(ln + "\n")
 
-    print(Fore.GREEN + f"\n[OK] Lignes mises a jour dans {input_file}")
+    print(Fore.GREEN + f"\n[OK] Lignes mises à jour dans {input_file}")
